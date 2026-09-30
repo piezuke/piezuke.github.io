@@ -100,7 +100,12 @@ function renderContactCard(label, href, icon) {
 /* ========================= THEME MANAGEMENT ========================= */
 function setTheme(t) {
   t = t === "light" ? "light" : "dark";
-  document.documentElement.setAttribute("data-theme", t);
+  const root = document.documentElement;
+  root.classList.add("theme-switching");
+  root.setAttribute("data-theme", t);
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => root.classList.remove("theme-switching")),
+  );
   try {
     localStorage.setItem("theme", t);
   } catch (e) {}
@@ -125,7 +130,8 @@ function setTheme(t) {
 const savedTheme =
   (function () {
     try {
-      return localStorage.getItem("theme");
+      const v = localStorage.getItem("theme");
+      return v === "light" || v === "dark" ? v : null;
     } catch (e) {
       return null;
     }

@@ -29,12 +29,10 @@
                         savedTheme === "light" ? "#fafafa" : "#050505",
                     );
                 }
-                if (savedTheme === "light" || savedTheme === "dark") {
-                    document.documentElement.setAttribute(
-                        "data-theme",
-                        savedTheme,
-                    );
-                }
+                document.documentElement.setAttribute(
+                    "data-theme",
+                    savedTheme === "light" ? "light" : "dark",
+                );
             } catch (e) {}
         </script>
         <title>pieBlog</title>
@@ -101,8 +99,7 @@
                     id="cmdk-btn"
                     role="button"
                     tabindex="0"
-                    title="Command palette (⌘K)"
-                    piezuke
+                    title="Command palette (Ctrl/⌘ K)"
                     aria-label="Search everything"
                 >
                     <span
@@ -248,7 +245,7 @@
             aria-label="Scroll to top or bottom"
         >
             <img
-                src="media/top_dark.webp"
+                src="media/top_light.webp"
                 id="btt-img"
                 width="60"
                 height="60"

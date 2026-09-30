@@ -155,6 +155,10 @@
     }
   }
 
+  // The first pointer position snaps the cursor into place, so it doesn't
+  // slide in from the middle of the screen (or flash at 0,0).
+  let firstMove = true;
+
   function place(el, x, y) {
     if (el) el.style.transform = "translate3d(" + x + "px," + y + "px,0)";
   }
@@ -227,6 +231,11 @@
     function (e) {
       mx = e.clientX;
       my = e.clientY;
+      if (firstMove) {
+        firstMove = false;
+        curX = mx;
+        curY = my;
+      }
       show();
       wakeLoop();
 
@@ -289,11 +298,17 @@
     wakeLoop();
   });
 
-  document.addEventListener("mouseleave", function () {
+  // mouseleave/mouseenter don't fire on `document`; use the root element.
+  document.documentElement.addEventListener("mouseleave", function () {
     visible = false;
     root.classList.remove("visible");
   });
-  document.addEventListener("mouseenter", show);
+  document.documentElement.addEventListener("mouseenter", function (e) {
+    curX = mx = e.clientX;
+    curY = my = e.clientY;
+    show();
+    wakeLoop();
+  });
 
   if (cursorStyle === "glitch-trail" && glitchCore) {
     setInterval(function () {
@@ -326,6 +341,24 @@
     resizeTrace();
     window.addEventListener("resize", resizeTrace, { passive: true });
 
+    // Cache the theme colour instead of calling getComputedStyle every frame.
+    let accentCache = "";
+    function accentColor() {
+      if (!accentCache) {
+        accentCache =
+          getComputedStyle(document.documentElement)
+            .getPropertyValue("--text")
+            .trim() || "#fff";
+      }
+      return accentCache;
+    }
+    new MutationObserver(function () {
+      accentCache = "";
+    }).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+
     let lastMoveAt = performance.now();
     let pinged = false;
     const pings = [];
@@ -341,10 +374,7 @@
     (function raf() {
       const now = performance.now();
       pctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-      const accent =
-        getComputedStyle(document.documentElement)
-          .getPropertyValue("--text")
-          .trim() || "#fff";
+      const accent = accentColor();
 
       if (legacyTrail.length > 1) {
         for (let i = 0; i < legacyTrail.length - 1; i++) {

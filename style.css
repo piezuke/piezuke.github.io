@@ -33,14 +33,15 @@
     --bg2: #0c0c0c;
     --surface: #0f0f0f;
     --text: #f2f2f2;
-    --muted: #c9c9c9;
-    --dim: #dfefdf;
+    --muted: #b8b8b8;
+    --dim: #8a8a8a;
     --border: #1c1c1c;
     --border-strong: #2c2c2c;
     --invert: #000000;
     --hair: 1px;
     --glow: 0 0 24px rgba(255, 255, 255, 0.08);
     --glow-shadow: rgba(0, 0, 0, 0.4);
+    --scrim: rgba(0, 0, 0, 0.72);
     --radius: 16px;
     --dur: 0.5s;
     --ease: cubic-bezier(0.16, 0.84, 0.44, 1);
@@ -53,14 +54,24 @@
     --bg2: #ffffff;
     --surface: #ffffff;
     --text: #0a0a0a;
-    --muted: #5c5c5c;
-    --dim: #9a9a9a;
+    --muted: #4a4a4a;
+    --dim: #6b6b6b;
     --border: #e4e4e4;
     --border-strong: #cfcfcf;
     --invert: #ffffff;
     --glow: 0 0 24px rgba(0, 0, 0, 0.06);
-    --glow-shadow: rgba(0, 0, 0, 0.4);
+    --glow-shadow: rgba(0, 0, 0, 0.12);
+    --scrim: rgba(0, 0, 0, 0.45);
     color-scheme: light;
+}
+
+/* Applied by setTheme() for a moment so every element flips at once
+   instead of fading at different speeds. */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+    transition: none !important;
 }
 
 /* ========================= 2. GLOBAL RESET ========================= */
@@ -184,7 +195,7 @@ header.topnav {
     border-bottom-right-radius: 24px;
     box-shadow:
         0 12px 36px var(--glow-shadow),
-        0 4px 16px rgba(0, 0, 0, 0.35);
+        0 4px 16px var(--glow-shadow);
     transition:
         width 0.3s var(--ease),
         padding 0.3s var(--ease),
@@ -327,7 +338,7 @@ nav.links a.active {
         border-radius: 18px;
         box-shadow:
             0 16px 40px var(--glow-shadow),
-            0 4px 16px rgba(0, 0, 0, 0.4);
+            0 4px 16px var(--glow-shadow);
         flex-direction: column;
         padding: 10px 8px;
         gap: 4px;
@@ -931,7 +942,7 @@ h3 {
     color: var(--text);
 }
 .article-body code {
-    font-family: var(--mono);
+    font-family: var(--sans);
     background: var(--surface);
     border: var(--hair) solid var(--border);
     padding: 2px 6px;
@@ -955,6 +966,7 @@ h3 {
     border: none;
     background: none;
     padding: 0;
+    font-size: 13.5px;
 }
 .article-body blockquote {
     border-left: 2px solid var(--text);
@@ -2210,7 +2222,7 @@ body:has(.noteswrap) .global-footer {
     position: fixed;
     inset: 0;
     z-index: 800;
-    background: color-mix(in srgb, #000 72%, transparent);
+    background: var(--scrim);
     display: flex;
     align-items: flex-start;
     justify-content: center;
