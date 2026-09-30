@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
+        <meta
+            http-equiv="Content-Security-Policy"
+            content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
+        />
+        <meta name="referrer" content="strict-origin-when-cross-origin" />
+        <meta name="theme-color" content="#050505" />
+        <script>
+            if (window.top !== window.self) {
+                try {
+                    window.top.location = window.self.location;
+                } catch (e) {}
+            }
+            try {
+                const savedTheme = localStorage.getItem("theme");
+                const themeColor = document.querySelector(
+                    'meta[name="theme-color"]',
+                );
+                if (themeColor) {
+                    themeColor.setAttribute(
+                        "content",
+                        savedTheme === "light" ? "#fafafa" : "#050505",
+                    );
+                }
+                if (savedTheme === "light" || savedTheme === "dark") {
+                    document.documentElement.setAttribute(
+                        "data-theme",
+                        savedTheme,
+                    );
+                }
+            } catch (e) {}
+        </script>
+        <title>pieBlog</title>
+        <meta
+            name="description"
+            content="CTF writeups, projects, notes, etc..."
+        />
+        <meta property="og:title" content="pieBlog" />
+        <meta
+            property="og:description"
+            content="CTF writeups, projects, notes, etc..."
+        />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="media/pfp.jpg" />
+        <meta name="twitter:card" content="summary" />
+        <link
+            rel="icon"
+            href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23000'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%23fff' font-family='monospace'%3E0%3C/text%3E%3C/svg%3E"
+        />
+        <link
+            rel="preload"
+            as="image"
+            href="media/pfp.webp"
+            type="image/webp"
+            fetchpriority="high"
+        />
+        <link
+            rel="preload"
+            as="font"
+            href="fonts/jetbrains-mono-latin-400-normal.woff2"
+            type="font/woff2"
+            crossorigin
+        />
+        <link rel="stylesheet" href="fonts.css" />
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <canvas id="bgcanvas"></canvas>
+        <div id="progress"></div>
+
+        <div id="loader">
+            <div style="width: 320px; max-width: 80vw">
+                <video
+                    id="loader-video"
+                    loop
+                    muted
+                    playsinline
+                    preload="metadata"
+                    style="width: 100%; border-radius: 8px"
+                    src="media/loader.mp4"
+                ></video>
+            </div>
+            <div class="loadbarwrap"><div class="loadbar"></div></div>
+            <div class="loadertext" id="loaderlabel">CONNECTING...</div>
+        </div>
+
+        <header class="topnav">
+            <a href="#/" class="brand" aria-label="Home">
+                <span id="cfg-brand">PIE</span>
+            </a>
+            <nav class="links" id="navlinks"></nav>
+            <div class="navctl">
+                <div
+                    id="cmdk-btn"
+                    role="button"
+                    tabindex="0"
+                    title="Command palette (⌘K)"
+                    piezuke
+                    aria-label="Search everything"
+                >
+                    <span
+                        ><span class="cmdk-key">⌘</span>
+                        <span class="cmdk-text">search everything</span></span
+                    >
+                </div>
+                <div
+                    class="mini-player"
+                    id="mini-player"
+                    role="region"
+                    aria-label="Audio player"
+                >
+                    <div class="mini-player-body">
+                        <a
+                            href="#/me"
+                            class="mini-art"
+                            title="View in playlist"
+                        >
+                            <svg
+                                class="mini-art-icon"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                            >
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <line x1="12" y1="2" x2="12" y2="5"></line>
+                                <line x1="12" y1="19" x2="12" y2="22"></line>
+                            </svg>
+                        </a>
+                        <a
+                            href="#/me"
+                            class="mini-info"
+                            title="View in playlist"
+                        >
+                            <div class="mini-title" id="mini-title">
+                                Track 01
+                            </div>
+                            <div class="mini-meta">
+                                <span class="mini-led"></span>
+                                <span class="mini-status" id="mini-status"
+                                    >IDLE</span
+                                >
+                            </div>
+                        </a>
+                        <div class="mini-actions">
+                            <button
+                                class="mini-btn mini-play"
+                                id="mini-play-btn"
+                                title="Play / Pause"
+                                aria-label="Play or pause audio"
+                            >
+                                <svg
+                                    class="mini-play-ic"
+                                    id="mini-play-ic"
+                                    viewBox="0 0 24 24"
+                                    width="13"
+                                    height="13"
+                                    fill="currentColor"
+                                >
+                                    <path d="M8 5v14l11-7z" />
+                                </svg>
+                                <svg
+                                    class="mini-pause-ic"
+                                    id="mini-pause-ic"
+                                    viewBox="0 0 24 24"
+                                    width="13"
+                                    height="13"
+                                    fill="currentColor"
+                                    style="display: none"
+                                >
+                                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                                </svg>
+                            </button>
+                            <button
+                                class="mini-btn"
+                                id="mini-next-btn"
+                                title="Skip to next track"
+                                aria-label="Skip to next track"
+                            >
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    width="14"
+                                    height="14"
+                                    fill="currentColor"
+                                >
+                                    <path
+                                        d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"
+                                    />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mini-progress-track">
+                        <div
+                            class="mini-progress-fill"
+                            id="mini-progress-fill"
+                        ></div>
+                    </div>
+                </div>
+                <button
+                    class="ibtn burger"
+                    id="burgerbtn"
+                    title="Menu"
+                    aria-label="Toggle navigation menu"
+                    aria-expanded="false"
+                    aria-controls="navlinks"
+                >
+                    ≡
+                </button>
+            </div>
+        </header>
+
+        <main id="app" tabindex="-1"></main>
+        <footer class="global-footer">
+            <div class="wrap footer-silly">
+                <p class="footer-quip" id="cfg-footer-quip"></p>
+                <p class="footer-copy" id="cfg-footer-text"></p>
+            </div>
+        </footer>
+
+        <div class="bottom-left-controls">
+            <button
+                class="ibtn"
+                id="themebtn"
+                title="Toggle theme"
+                aria-label="Toggle light/dark theme"
+            ></button>
+            <button
+                class="ibtn"
+                id="raintoggle"
+                title="Toggle storm"
+                aria-label="Toggle weather"
+            ></button>
+        </div>
+        <audio id="global-player-audio" preload="auto"></audio>
+        <button
+            id="btt-btn"
+            class="btt-btn"
+            title="Back to top"
+            aria-label="Scroll to top or bottom"
+        >
+            <img
+                src="media/top_dark.webp"
+                id="btt-img"
+                width="60"
+                height="60"
+                alt=""
+            />
+        </button>
+
+        <div id="palette-overlay">
+            <div id="palette" role="dialog" aria-label="Command palette">
+                <input
+                    id="palette-input"
+                    type="text"
+                    placeholder="Search writeups, projects, notes..."
+                    autocomplete="off"
+                    spellcheck="false"
+                />
+                <div id="palette-results"></div>
+                <div class="palette-hint">
+                    <span><kbd>↑↓</kbd> navigate &nbsp; <kbd>↵</kbd> open</span
+                    ><span><kbd>esc</kbd> close</span>
+                </div>
+            </div>
+        </div>
+
+        <script defer src="marked.min.js"></script>
+        <script defer src="config.js"></script>
+        <script defer src="js/cursor.js"></script>
+        <script defer src="data.js"></script>
+        <script defer src="js/player.js"></script>
+        <script defer src="js/canvas.js"></script>
+        <script defer src="js/app.js"></script>
+        <script defer src="js/cmdk.js"></script>
+    </body>
+</html>
