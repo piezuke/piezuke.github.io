@@ -10,8 +10,13 @@
             http-equiv="Content-Security-Policy"
             content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
         />
+        <meta name="format-detection" content="telephone=no, email=no, address=no" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="referrer" content="strict-origin-when-cross-origin" />
         <meta name="theme-color" content="#050505" />
+        <meta name="color-scheme" content="light dark" />
+        <meta name="darkreader-lock" />
+        <meta name="supported-color-schemes" content="light dark" />
         <script>
             if (window.top !== window.self) {
                 try {
@@ -19,20 +24,24 @@
                 } catch (e) {}
             }
             try {
-                const savedTheme = localStorage.getItem("theme");
-                const themeColor = document.querySelector(
-                    'meta[name="theme-color"]',
-                );
-                if (themeColor) {
-                    themeColor.setAttribute(
+                var saved = localStorage.getItem("theme");
+                var theme =
+                    saved === "light" || saved === "dark"
+                        ? saved
+                        : window.matchMedia &&
+                            window.matchMedia("(prefers-color-scheme: light)")
+                                .matches
+                          ? "light"
+                          : "dark";
+                var root = document.documentElement;
+                root.setAttribute("data-theme", theme);
+                root.style.colorScheme = theme;
+                var tc = document.querySelector('meta[name="theme-color"]');
+                if (tc)
+                    tc.setAttribute(
                         "content",
-                        savedTheme === "light" ? "#fafafa" : "#050505",
+                        theme === "light" ? "#f6f6f6" : "#050505",
                     );
-                }
-                document.documentElement.setAttribute(
-                    "data-theme",
-                    savedTheme === "light" ? "light" : "dark",
-                );
             } catch (e) {}
         </script>
         <title>pieBlog</title>
@@ -83,11 +92,11 @@
                 ></video>
             </div>
             <div class="loadbarwrap"><div class="loadbar"></div></div>
-            <div class="loadertext" id="loaderlabel">CONNECTING...</div>
+            <div class="loadertext" id="loaderlabel" data-cfg="ui.loader.initial">CONNECTING...</div>
         </div>
 
         <header class="topnav">
-            <a href="#/" class="brand" aria-label="Home">
+            <a href="#/" class="brand" aria-label="Home" data-cfg-href="home" data-cfg-attr="aria-label:nav.homeLabel">
                 <span id="cfg-brand">PIE</span>
             </a>
             <nav class="links" id="navlinks"></nav>
@@ -98,10 +107,11 @@
                     tabindex="0"
                     title="Command palette (Ctrl/⌘ K)"
                     aria-label="Search everything"
+                    data-cfg-attr="title:ui.search.buttonTitle;aria-label:ui.search.buttonLabel"
                 >
                     <span
-                        ><span class="cmdk-key">⌘</span>
-                        <span class="cmdk-text">search everything</span></span
+                        ><span class="cmdk-key" data-cfg="ui.search.key">⌘</span>
+                        <span class="cmdk-text" data-cfg="ui.search.buttonText">search everything</span></span
                     >
                 </div>
                 <div
@@ -109,12 +119,15 @@
                     id="mini-player"
                     role="region"
                     aria-label="Audio player"
+                    data-cfg-attr="aria-label:ui.miniPlayer.label"
                 >
                     <div class="mini-player-body">
                         <a
                             href="#/me"
                             class="mini-art"
                             title="View in playlist"
+                            data-cfg-href="about"
+                            data-cfg-attr="title:ui.miniPlayer.linkTitle"
                         >
                             <svg
                                 class="mini-art-icon"
@@ -133,13 +146,15 @@
                             href="#/me"
                             class="mini-info"
                             title="View in playlist"
+                            data-cfg-href="about"
+                            data-cfg-attr="title:ui.miniPlayer.linkTitle"
                         >
-                            <div class="mini-title" id="mini-title">
+                            <div class="mini-title" id="mini-title" data-cfg="ui.miniPlayer.idleTitle">
                                 Track 01
                             </div>
                             <div class="mini-meta">
                                 <span class="mini-led"></span>
-                                <span class="mini-status" id="mini-status"
+                                <span class="mini-status" id="mini-status" data-cfg="music.status.idle"
                                     >IDLE</span
                                 >
                             </div>
@@ -150,6 +165,7 @@
                                 id="mini-play-btn"
                                 title="Play / Pause"
                                 aria-label="Play or pause audio"
+                                data-cfg-attr="title:ui.miniPlayer.playTitle;aria-label:ui.miniPlayer.playLabel"
                             >
                                 <svg
                                     class="mini-play-ic"
@@ -178,6 +194,7 @@
                                 id="mini-next-btn"
                                 title="Skip to next track"
                                 aria-label="Skip to next track"
+                                data-cfg-attr="title:ui.miniPlayer.nextTitle;aria-label:ui.miniPlayer.nextLabel"
                             >
                                 <svg
                                     viewBox="0 0 24 24"
@@ -204,6 +221,7 @@
                     id="burgerbtn"
                     title="Menu"
                     aria-label="Toggle navigation menu"
+                    data-cfg-attr="title:nav.menuTitle;aria-label:nav.menuLabel"
                     aria-expanded="false"
                     aria-controls="navlinks"
                 >
@@ -222,24 +240,31 @@
 
         <div class="bottom-left-controls">
             <button
-                class="ibtn"
                 id="themebtn"
+                class="theme-switch"
+                type="button"
+                role="switch"
+                aria-checked="true"
+                aria-label="Dark mode"
                 title="Toggle theme"
-                aria-label="Toggle light/dark theme"
+                data-cfg-attr="aria-label:ui.theme.label"
             ></button>
             <button
                 class="ibtn"
                 id="raintoggle"
+                type="button"
                 title="Toggle storm"
                 aria-label="Toggle weather"
+                data-cfg-attr="title:ui.rain.title;aria-label:ui.rain.label"
             ></button>
         </div>
-        <audio id="global-player-audio" preload="auto"></audio>
+        <audio id="global-player-audio" preload="metadata"></audio>
         <button
             id="btt-btn"
             class="btt-btn"
             title="Back to top"
             aria-label="Scroll to top or bottom"
+            data-cfg-attr="title:ui.backToTop.top;aria-label:ui.backToTop.label"
         >
             <img
                 src="media/top_light.webp"
@@ -251,18 +276,19 @@
         </button>
 
         <div id="palette-overlay">
-            <div id="palette" role="dialog" aria-label="Command palette">
+            <div id="palette" role="dialog" aria-label="Command palette" data-cfg-attr="aria-label:ui.search.dialogLabel">
                 <input
                     id="palette-input"
                     type="text"
                     placeholder="Search writeups, projects, notes..."
+                    data-cfg-attr="placeholder:ui.search.placeholder"
                     autocomplete="off"
                     spellcheck="false"
                 />
                 <div id="palette-results"></div>
                 <div class="palette-hint">
-                    <span><kbd>↑↓</kbd> navigate &nbsp; <kbd>↵</kbd> open</span
-                    ><span><kbd>esc</kbd> close</span>
+                    <span><kbd>↑↓</kbd> <span data-cfg="ui.search.hintNavigate">navigate</span> &nbsp; <kbd>↵</kbd> <span data-cfg="ui.search.hintOpen">open</span></span
+                    ><span><kbd>esc</kbd> <span data-cfg="ui.search.hintClose">close</span></span>
                 </div>
             </div>
         </div>

@@ -3,12 +3,15 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="darkreader-lock" />
         <title>404 — Redirecting</title>
         <meta http-equiv="refresh" content="1; url=./#/" />
         <script>
             (function () {
                 var loc = window.location;
                 var parts = loc.pathname.split("/").filter(Boolean);
+                // KEEP IN SYNC with CONFIG.routes in config.js (slugs without "/").
+                // This tiny page cannot load config.js (it can be served from any depth).
                 var routeNames = new Set([
                     "writeups",
                     "projects",
@@ -40,11 +43,17 @@
                 loc.replace(target);
             })();
         </script>
+    <style>
+        :root { --bg: #050505; --fg: #fafafa; --dim: #a6a6a6; color-scheme: dark light; }
+        @media (prefers-color-scheme: light) {
+            :root { --bg: #f6f6f6; --fg: #050505; --dim: #4d4d4d; }
+        }
+    </style>
     </head>
     <body
         style="
-            background: #050505;
-            color: #f2f2f2;
+            background: var(--bg);
+            color: var(--fg);
             font-family: ui-monospace, monospace;
             display: flex;
             align-items: center;
@@ -56,11 +65,11 @@
     >
         <div>
             <h1 style="font-size: 36px; margin: 0 0 10px">404</h1>
-            <p style="color: #8a8a8a; font-size: 16px">
+            <p style="color: var(--dim); font-size: 16px">
                 Page not found. Redirecting to
                 <a
                     href="./#/"
-                    style="color: #f2f2f2; text-decoration: underline"
+                    style="color: var(--fg); text-decoration: underline"
                     >home</a
                 >...
             </p>

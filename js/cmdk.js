@@ -15,19 +15,26 @@
   let items = null;
   let activeIndex = 0;
 
+  // labels/routes come from config.js through the helpers in app.js
+  const tagName = (k, d) => (typeof cfg === "function" ? cfg("ui.search.tags." + k, d) : d);
+  const routeFor = (page, ...rest) =>
+    typeof routeOf === "function"
+      ? [routeOf(page).replace(/\/$/, ""), ...rest].join("/")
+      : "/" + [page, ...rest].join("/");
+
   function buildIndex() {
     items = [];
-    if (typeof CONFIG !== "undefined" && Array.isArray(CONFIG.navLinks)) {
-      CONFIG.navLinks.forEach((n) =>
-        items.push({ title: n.label, tag: "page", route: n.route }),
+    if (typeof getNavLinks === "function") {
+      getNavLinks().forEach((n) =>
+        items.push({ title: n.label, tag: tagName("page", "page"), route: n.route }),
       );
     }
     if (typeof WRITEUPS !== "undefined" && Array.isArray(WRITEUPS)) {
       WRITEUPS.forEach((w) =>
         items.push({
           title: w.title,
-          tag: "writeup",
-          route: `/writeups/${w.slug}`,
+          tag: tagName("writeup", "writeup"),
+          route: routeFor("writeups", w.slug),
         }),
       );
     }
@@ -35,14 +42,18 @@
       PROJECTS.forEach((p) =>
         items.push({
           title: p.title,
-          tag: "project",
-          route: `/projects/${p.slug}`,
+          tag: tagName("project", "project"),
+          route: routeFor("projects", p.slug),
         }),
       );
     }
     if (typeof getAllNotes === "function") {
       getAllNotes().forEach((n) =>
-        items.push({ title: n.title, tag: "note", route: `/notes/${n.id}` }),
+        items.push({
+          title: n.title,
+          tag: tagName("note", "note"),
+          route: routeFor("notes", n.id),
+        }),
       );
     }
     return items;
@@ -63,7 +74,11 @@
     if (filtered.length === 0) {
       const safeQ =
         typeof escapeHTML === "function" ? escapeHTML(query) : query;
-      results.innerHTML = `<div class="palette-empty">No matches for "${safeQ}"</div>`;
+      const tpl =
+        typeof cfg === "function"
+          ? cfg("ui.search.empty", 'No matches for "{query}"')
+          : 'No matches for "{query}"';
+      results.innerHTML = `<div class="palette-empty">${(typeof escapeHTML === "function" ? escapeHTML(tpl) : tpl).replace("{query}", safeQ)}</div>`;
       return;
     }
 

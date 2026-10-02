@@ -6,59 +6,92 @@
  * obsidian-style nested notes vault, theme toggling, and page behaviors.
  */
 
-/* ========================= CONTENT DEFAULTS ========================= */
-const TIMELINE = [
-  {
-    date: "2025 June",
-    title: "Started my CS degree(god help)",
-    body: "Learnt a bit of linux and started off with CTFs",
-  },
-  {
-    date: "2025 November",
-    title: "Joined Bi0s and got started with violating binaries",
-    body: "Did my first buffer overflow, assembly and memory got fun, Started off playin CTFs as team",
-  },
-  {
-    date: "2026",
-    title: "Present day",
-    body: "Welp, im surviving. Sort off.",
-  },
-];
+/* ========================= CONFIG HELPERS =========================
+ * All text, titles and slugs come from config.js. These helpers read it
+ * safely (with fallbacks) so a missing key never breaks the page.
+ */
+function cfg(path, fallback) {
+  let o = typeof CONFIG !== "undefined" ? CONFIG : undefined;
+  for (const k of String(path).split(".")) {
+    if (o == null || typeof o !== "object") return fallback;
+    o = o[k];
+  }
+  return o == null ? fallback : o;
+}
 
-const ABOUT = {
-  tagline: "A lil bit about myself",
-  bio: `Hello. Myself PIE. I go by pie-zuke cus some guy(s) have already claimed the name 'PIE' in most platforms. So I can't be niche no more, but feel free to js use PIE. Also its 'zyuk', NOT ZU-KEH. Anyway, Im a CS student at Amrita, and a part of team bi0s under the Binary Exploitation category. Buy me coffee if u see me(unlikely cus I hate touching grass). I occationally take on random side projects which may or maynot include building a wholeahh operating system(I wish I had the motivation). Feel free to try out that music player on the left, except idk if it will be working by the time I post this. Plus I still haven't finished composing even a single tune at the time of writing this. Bluh`,
-  skills: [
-    "Binary Exploitation",
-    "Web (may not be my cup of tea)",
-    "OS dev",
-    "Game dev",
-    "Music Composition",
-    "Reversing (still starting out)",
-    "Larping",
-  ],
-  contacts: [
-    [
-      "GitHub",
-      "https://github.com/piezuke",
-      '<svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>',
-    ],
-    [
-      "Twitter / X",
-      "https://twitter.com/piezuke",
-      '<svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>',
-    ],
-    [
-      "Email",
-      "mailto:piezuke@gmail.com",
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>',
-    ],
-    [
-      "CTFtime",
-      "https://ctftime.org/user/251840",
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>',
-    ],
-  ],
+// "{n} entries" -> "3 entries".  {year} and {site} are always available.
+function fmt(str, vars) {
+  const v = Object.assign(
+    { year: new Date().getFullYear(), site: cfg("site.name", "") },
+    vars || {},
+  );
+  return String(str == null ? "" : str).replace(/\{(\w+)\}/g, (m, k) =>
+    k in v ? v[k] : m,
+  );
+}
+function fmtCount(n, many, one) {
+  return fmt(n === 1 && one ? one : many, { n });
+}
+
+/* ---- routes / slugs ---- */
+const DEFAULT_ROUTES = {
+  home: "/",
+  writeups: "/writeups",
+  projects: "/projects",
+  notes: "/notes",
+  timeline: "/timeline",
+  about: "/me",
+};
+const PAGE_KEYS = Object.keys(DEFAULT_ROUTES);
+
+function routeOf(page) {
+  const raw = String(cfg("routes." + page, DEFAULT_ROUTES[page] || "/")).trim();
+  const clean = raw.replace(/^[#/]+|\/+$/g, "");
+  return clean ? "/" + clean : "/";
+}
+function slugOf(page) {
+  return routeOf(page).split("/")[1] || "";
+}
+// "#/writeups/my-post"
+function hrefFor(page, ...rest) {
+  const base = routeOf(page);
+  const tail = rest.filter((x) => x != null && x !== "").join("/");
+  if (base === "/") return "#/" + tail;
+  return "#" + base + (tail ? "/" + tail : "");
+}
+function pageForSlug(slug) {
+  if (!slug) return "home";
+  for (const k of PAGE_KEYS) if (k !== "home" && slugOf(k) === slug) return k;
+  const rd = cfg("routes.redirects", {});
+  if (rd && rd[slug] && PAGE_KEYS.includes(rd[slug])) return rd[slug];
+  return null;
+}
+function isNotesPath(p) {
+  return (p || "").split("/")[1] === slugOf("notes");
+}
+function getNavLinks() {
+  return cfg("nav.links", []).map((l) => ({
+    label: l.label,
+    route: l.route || routeOf(l.page),
+  }));
+}
+function pageList(page) {
+  if (page === "writeups") return typeof WRITEUPS !== "undefined" ? WRITEUPS : [];
+  if (page === "projects") return typeof PROJECTS !== "undefined" ? PROJECTS : [];
+  return [];
+}
+function avatarSrc(kind) {
+  return cfg("site.avatar." + kind, "media/pfp." + kind);
+}
+
+/* ---- icon set for contact tiles (use  icon: "name"  in config) ---- */
+const ICONS = {
+  github: "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" width=\"22\" height=\"22\"><path d=\"M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z\"/></svg>",
+  twitter: "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" width=\"22\" height=\"22\"><path d=\"M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z\"/></svg>",
+  email: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" width=\"22\" height=\"22\"><path d=\"M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z\"></path><polyline points=\"22,6 12,13 2,6\"></polyline></svg>",
+  ctftime: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" width=\"22\" height=\"22\"><path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z\"></path><line x1=\"4\" y1=\"22\" x2=\"4\" y2=\"15\"></line></svg>",
+  discord: "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.74 19.74 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.2 14.2 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.1 13.1 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.1.246.198.373.292a.077.077 0 0 1-.006.127 12.3 12.3 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.06.06 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z\"/></svg>",
+  link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>',
 };
 
 /* ========================= SANITIZATION & HELPERS ========================= */
@@ -83,71 +116,274 @@ function sanitizeUrl(url) {
   return "#";
 }
 
-function renderContactCard(label, href, icon) {
-  const isMail = href.startsWith("mailto:");
-  const targetAttr = isMail ? "" : ' target="_blank" rel="noopener noreferrer"';
-  return `
-    <a href="${sanitizeUrl(href)}" class="contact-card"${targetAttr} aria-label="${escapeHTML(label)}">
-      <div class="contact-card-main">
-        <span class="contact-card-icon" aria-hidden="true">${icon}</span>
-        <span class="contact-card-label">${escapeHTML(label)}</span>
-      </div>
-      <span class="contact-card-arrow" aria-hidden="true">↗</span>
-    </a>
-  `;
+function contactHandle(href) {
+  const h = String(href || "");
+  if (h.startsWith("mailto:")) return h.slice(7);
+  try {
+    const u = new URL(h);
+    const parts = u.pathname.split("/").filter(Boolean);
+    return parts.length ? "@" + parts[parts.length - 1] : u.hostname;
+  } catch (e) {
+    return h;
+  }
 }
 
-/* ========================= THEME MANAGEMENT ========================= */
-function setTheme(t) {
-  t = t === "light" ? "light" : "dark";
-  const root = document.documentElement;
-  root.classList.add("theme-switching");
-  root.setAttribute("data-theme", t);
-  requestAnimationFrame(() =>
-    requestAnimationFrame(() => root.classList.remove("theme-switching")),
-  );
+function contactTile(c) {
+  const label = c.label || "";
+  const handle = c.handle != null ? c.handle : c.url ? contactHandle(c.url) : "";
+  const icon = c.iconSvg || ICONS[c.icon] || ICONS.link;
+  const cls = "social-tile" + (c.wide ? " wide" : "");
+  const inner = (go) => `
+      <span class="social-ic" aria-hidden="true">${icon}</span>
+      <span class="social-meta">
+        <span class="social-label">${escapeHTML(label)}</span>
+        <span class="social-handle">${escapeHTML(handle)}</span>
+      </span>
+      <span class="social-go" aria-hidden="true">${escapeHTML(go)}</span>`;
+  const aria = `${escapeHTML(label)}: ${escapeHTML(handle)}`;
+
+  if (c.copy != null) {
+    return `<button type="button" class="${cls}" data-copy="${escapeHTML(c.copy)}" data-copied="${escapeHTML(c.copiedText || "copied ✓")}" aria-label="${aria}">${inner(c.hint || "click to copy")}</button>`;
+  }
+  const href = c.url || "#";
+  const isMail = href.startsWith("mailto:");
+  const targetAttr = isMail ? "" : ' target="_blank" rel="noopener noreferrer"';
+  return `<a href="${sanitizeUrl(href)}" class="${cls}"${targetAttr} aria-label="${aria}">${inner(cfg("ui.arrow", "↗"))}</a>`;
+}
+
+// Copy-to-clipboard tiles (e.g. Discord). Works without inline handlers.
+function setupCopyTiles() {
+  document.querySelectorAll("[data-copy]").forEach((el) => {
+    if (el.dataset.bound) return;
+    el.dataset.bound = "1";
+    el.addEventListener("click", async () => {
+      const text = el.dataset.copy;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand("copy");
+        } catch (err) {}
+        ta.remove();
+      }
+      const go = el.querySelector(".social-go");
+      if (!go) return;
+      const prev = el.dataset.hint || (el.dataset.hint = go.textContent);
+      go.textContent = el.dataset.copied || "copied ✓";
+      el.classList.add("copied");
+      clearTimeout(el._t);
+      el._t = setTimeout(() => {
+        go.textContent = prev;
+        el.classList.remove("copied");
+      }, 1600);
+    });
+  });
+}
+
+function socialsHTML() {
+  const list = cfg("pages.about.contacts", []);
+  return `<div class="social-grid">${list.map(contactTile).join("")}</div>`;
+}
+
+/* ========================= THEME MANAGEMENT =========================
+ * - Defaults to the visitor's OS preference until they pick a side.
+ * - Once they click the switch, their choice is saved and wins.
+ * - Follows OS changes live (only while no choice is saved).
+ * - Syncs across open tabs.
+ * - Circular reveal via the View Transitions API where supported;
+ *   plain instant flip everywhere else / with reduced motion.
+ * - Fires a "themechange" event so the canvas can re-colour at once.
+ */
+const darkMQ =
+  typeof window.matchMedia === "function"
+    ? window.matchMedia("(prefers-color-scheme: dark)")
+    : null;
+
+function readStoredTheme() {
   try {
-    localStorage.setItem("theme", t);
-  } catch (e) {}
+    const v = localStorage.getItem("theme");
+    return v === "light" || v === "dark" ? v : null;
+  } catch (e) {
+    return null;
+  }
+}
 
-  const metaTheme = document.querySelector('meta[name="theme-color"]');
-  if (metaTheme)
-    metaTheme.setAttribute("content", t === "light" ? "#fafafa" : "#050505");
+function systemTheme() {
+  return darkMQ && !darkMQ.matches ? "light" : "dark";
+}
 
-  const themebtn = document.getElementById("themebtn");
-  if (themebtn) {
-    themebtn.innerHTML =
-      t === "light"
-        ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>'
-        : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>';
+function currentTheme() {
+  return document.documentElement.getAttribute("data-theme") === "light"
+    ? "light"
+    : "dark";
+}
+
+const THEME_ICON_SUN =
+  '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7L7 17M17 7l1.7-1.7"></path></svg>';
+const THEME_ICON_MOON =
+  '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5a.6.6 0 0 0-.8-.7A9.6 9.6 0 1 0 21.2 15a.6.6 0 0 0-.7-.8z"></path></svg>';
+
+function mountThemeSwitch() {
+  const btn = document.getElementById("themebtn");
+  if (!btn || btn.dataset.mounted) return;
+  btn.dataset.mounted = "1";
+  btn.className = "theme-switch";
+  btn.setAttribute("role", "switch");
+  btn.setAttribute("type", "button");
+  btn.innerHTML =
+    '<span class="ts-bg ts-bg-sun" aria-hidden="true">' +
+    THEME_ICON_SUN +
+    '</span><span class="ts-bg ts-bg-moon" aria-hidden="true">' +
+    THEME_ICON_MOON +
+    '</span><span class="ts-knob" aria-hidden="true"><span class="ts-ic ts-sun">' +
+    THEME_ICON_SUN +
+    '</span><span class="ts-ic ts-moon">' +
+    THEME_ICON_MOON +
+    "</span></span>";
+}
+
+function paintTheme(t) {
+  const root = document.documentElement;
+  root.setAttribute("data-theme", t);
+  root.style.colorScheme = t;
+
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) {
+    const tc = cfg("site.themeColors", { dark: "#050505", light: "#f6f6f6" });
+    meta.setAttribute("content", tc[t] || (t === "light" ? "#f6f6f6" : "#050505"));
+  }
+
+  const btn = document.getElementById("themebtn");
+  if (btn) {
+    btn.setAttribute("aria-checked", String(t === "dark"));
+    btn.setAttribute("aria-label", cfg("ui.theme.label", "Dark mode"));
+    btn.title =
+      t === "dark"
+        ? cfg("ui.theme.toLight", "Switch to light mode")
+        : cfg("ui.theme.toDark", "Switch to dark mode");
   }
 
   const bttImg = document.getElementById("btt-img");
   if (bttImg)
     bttImg.src = t === "light" ? "media/top_dark.webp" : "media/top_light.webp";
+
+  window.dispatchEvent(new CustomEvent("themechange", { detail: { theme: t } }));
 }
 
-const savedTheme =
-  (function () {
+/**
+ * setTheme(t, { persist, origin })
+ *  persist: save the choice (default true)
+ *  origin:  {x, y} for the circular reveal
+ */
+function setTheme(t, opts) {
+  t = t === "light" ? "light" : "dark";
+  const { persist = true, origin = null } = opts || {};
+  const root = document.documentElement;
+
+  if (persist) {
     try {
-      const v = localStorage.getItem("theme");
-      return v === "light" || v === "dark" ? v : null;
-    } catch (e) {
-      return null;
-    }
-  })() || "dark";
-setTheme(savedTheme);
+      localStorage.setItem("theme", t);
+    } catch (e) {}
+  }
+  if (t === currentTheme() && root.dataset.themeReady) {
+    paintTheme(t);
+    return;
+  }
 
-const themebtn = document.getElementById("themebtn");
-if (themebtn) {
-  themebtn.onclick = () => {
-    setTheme(
-      document.documentElement.getAttribute("data-theme") === "light"
-        ? "dark"
-        : "light",
-    );
+  const reduce =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const canVT =
+    !reduce &&
+    origin &&
+    typeof document.startViewTransition === "function" &&
+    root.dataset.themeReady;
+
+  const flip = () => {
+    root.classList.add("theme-switching");
+    paintTheme(t);
   };
+  const done = () =>
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => root.classList.remove("theme-switching")),
+    );
+
+  if (!canVT) {
+    flip();
+    done();
+    return;
+  }
+
+  try {
+    const vt = document.startViewTransition(flip);
+    vt.ready
+      .then(() => {
+        const { x, y } = origin;
+        const r = Math.hypot(
+          Math.max(x, window.innerWidth - x),
+          Math.max(y, window.innerHeight - y),
+        );
+        root.animate(
+          {
+            clipPath: [
+              `circle(0px at ${x}px ${y}px)`,
+              `circle(${r}px at ${x}px ${y}px)`,
+            ],
+          },
+          {
+            duration: 520,
+            easing: "cubic-bezier(0.16, 0.84, 0.44, 1)",
+            pseudoElement: "::view-transition-new(root)",
+          },
+        );
+      })
+      .catch(() => {});
+    vt.finished.then(done, done);
+  } catch (e) {
+    flip();
+    done();
+  }
 }
+
+mountThemeSwitch();
+setTheme(readStoredTheme() || systemTheme(), { persist: false });
+document.documentElement.dataset.themeReady = "1";
+
+(function bindThemeSwitch() {
+  const btn = document.getElementById("themebtn");
+  if (btn) {
+    btn.addEventListener("click", () => {
+      const r = btn.getBoundingClientRect();
+      setTheme(currentTheme() === "dark" ? "light" : "dark", {
+        origin: { x: r.left + r.width / 2, y: r.top + r.height / 2 },
+      });
+    });
+  }
+
+  // Follow the OS only while the visitor hasn't made a choice.
+  const onSystemChange = () => {
+    if (!readStoredTheme()) setTheme(systemTheme(), { persist: false });
+  };
+  if (darkMQ) {
+    if (darkMQ.addEventListener) darkMQ.addEventListener("change", onSystemChange);
+    else if (darkMQ.addListener) darkMQ.addListener(onSystemChange);
+  }
+
+  // Keep multiple tabs in step.
+  window.addEventListener("storage", (e) => {
+    if (e.key === "theme") {
+      setTheme(e.newValue === "light" || e.newValue === "dark" ? e.newValue : systemTheme(), {
+        persist: false,
+      });
+    }
+  });
+})();
 
 const burgerbtn = document.getElementById("burgerbtn");
 if (burgerbtn) {
@@ -160,8 +396,24 @@ if (burgerbtn) {
   };
 }
 
+// Mobile menu: tap outside or press Esc to close it.
+document.addEventListener("click", (e) => {
+  const nav = document.getElementById("navlinks");
+  if (!nav || !nav.classList.contains("open")) return;
+  if (e.target.closest("#navlinks") || e.target.closest("#burgerbtn")) return;
+  nav.classList.remove("open");
+  if (burgerbtn) burgerbtn.setAttribute("aria-expanded", "false");
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  const nav = document.getElementById("navlinks");
+  if (nav && nav.classList.contains("open")) {
+    nav.classList.remove("open");
+    if (burgerbtn) burgerbtn.setAttribute("aria-expanded", "false");
+  }
+});
+
 /* ========================= ROUTER ========================= */
-const ROUTE_ALIASES = { timeline: "story", about: "me" };
 
 function parseHash() {
   const loc =
@@ -173,7 +425,10 @@ function parseHash() {
   const h = (loc && loc.hash ? loc.hash : "").replace(/^#/, "") || "/";
   const [rawPath, sub] = h.split("?");
   const segs = rawPath.split("/");
-  if (segs[1] && ROUTE_ALIASES[segs[1]]) segs[1] = ROUTE_ALIASES[segs[1]];
+  if (segs[1]) {
+    const pg = pageForSlug(segs[1]);
+    if (pg && pg !== "home") segs[1] = slugOf(pg);
+  }
   return { path: segs.join("/") || "/", sub };
 }
 
@@ -190,8 +445,9 @@ function navigate() {
   const rootRoute = path.split("/")[1] ? "/" + path.split("/")[1] : "/";
   const canonicalRoute = (route) => {
     const segments = route.split("/");
-    if (segments[1] && ROUTE_ALIASES[segments[1]]) {
-      segments[1] = ROUTE_ALIASES[segments[1]];
+    if (segments[1]) {
+      const pg = pageForSlug(segments[1]);
+      if (pg && pg !== "home") segments[1] = slugOf(pg);
     }
     return segments.join("/") || "/";
   };
@@ -201,7 +457,7 @@ function navigate() {
   });
 
   // Toggle in-notes class to hide global footer during vault view
-  document.body.classList.toggle("in-notes", path.startsWith("/notes"));
+  document.body.classList.toggle("in-notes", isNotesPath(path));
 
   if (isInitialLoad) {
     isInitialLoad = false;
@@ -229,7 +485,7 @@ function navigate() {
 
   // Seamless zero-loader navigation when switching between notes
   const isBetweenNotes =
-    currentRoutePath.startsWith("/notes") && path.startsWith("/notes");
+    isNotesPath(currentRoutePath) && isNotesPath(path);
   currentRoutePath = path;
 
   if (isBetweenNotes) {
@@ -237,7 +493,7 @@ function navigate() {
     const noteId = parts[1] || "";
     if (document.getElementById("noteswrap")) {
       updateActiveNoteInView(noteId);
-      document.title = pageTitle(["notes", noteId]);
+      document.title = pageTitle([slugOf("notes"), noteId]);
       if (window.innerWidth <= 800) {
         const noteMain = document.getElementById("noteMain");
         if (noteMain) noteMain.scrollIntoView({ behavior: "smooth" });
@@ -262,14 +518,10 @@ function navigate() {
 function showLoader(cb) {
   const l = document.getElementById("loader");
   const vid = document.getElementById("loader-video");
-  const labels = [
-    "bluh bluh bluh bluh....",
-    "buh buh buh buh....",
-    "fweh fweh fweh fweh....",
-    "pluh{0MG_pr0ud_0f_y0u_wh0ever_y0ur}",
-  ];
+  const labels = cfg("ui.loader.labels", []);
   const lbl = document.getElementById("loaderlabel");
-  if (lbl) lbl.textContent = labels[Math.floor(Math.random() * labels.length)];
+  if (lbl && labels.length)
+    lbl.textContent = labels[Math.floor(Math.random() * labels.length)];
   if (l) l.classList.remove("hide");
   if (vid) {
     try {
@@ -294,64 +546,38 @@ function showLoader(cb) {
 let isFirstRender = true;
 
 function pageTitle(parts) {
-  const site = "piezuke";
-  const first = parts[0];
-  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-  if (!first) return "pieBlog";
-  const names = {
-    writeups: "Writeups",
-    projects: "Projects",
-    notes: "Notes",
-    story: "Story",
-    me: "About",
-  };
-  if (!names[first]) return `Not found — ${site}`;
-  let label = names[first];
+  // home: used as-is
+  if (!parts[0]) return cfg("pages.home.title", cfg("site.name", "")) || cfg("site.brand", "");
+  const tpl = cfg("site.titleTemplate", "{page} — {site}");
+  const page = pageForSlug(parts[0]);
+  if (!page || page === "home")
+    return fmt(tpl, { page: cfg("pages.notFound.title", "Not found") });
+  let label = cfg("pages." + page + ".title", page);
   if (parts[1]) {
-    const lists = {
-      writeups: typeof WRITEUPS !== "undefined" ? WRITEUPS : [],
-      projects: typeof PROJECTS !== "undefined" ? PROJECTS : [],
-    };
-    const item = lists[first] && lists[first].find((x) => x.slug === parts[1]);
+    const item = pageList(page).find((x) => x.slug === parts[1]);
     if (item) label = item.title;
-    else if (first === "notes") {
+    else if (page === "notes") {
       const n = findNote(parts[1]);
       if (n) label = n.title;
-    } else label = cap(parts[1]);
+    } else label = parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
   }
-  return `${label} — ${site}`;
+  return fmt(tpl, { page: label });
 }
 
 function render(path) {
   try {
     const parts = path.split("/").filter(Boolean);
     let html = "";
-    const writeupsList = typeof WRITEUPS !== "undefined" ? WRITEUPS : [];
-    const projectsList = typeof PROJECTS !== "undefined" ? PROJECTS : [];
+    const page = parts.length ? pageForSlug(parts[0]) : "home";
 
-    if (parts.length === 0) html = viewHome();
-    else if (parts[0] === "writeups" && parts[1])
-      html = viewPost(writeupsList, parts[1], "writeups");
-    else if (parts[0] === "writeups")
-      html = viewList(
-        writeupsList,
-        CONFIG.writeupsTitle,
-        CONFIG.writeupsSubtitle,
-        "writeups",
-      );
-    else if (parts[0] === "projects" && parts[1])
-      html = viewPost(projectsList, parts[1], "projects");
-    else if (parts[0] === "projects")
-      html = viewList(
-        projectsList,
-        CONFIG.projectsTitle,
-        CONFIG.projectsSubtitle,
-        "projects",
-      );
-    else if (parts[0] === "notes") html = viewNotes(parts[1]);
-    else if (parts[0] === "story")
-      html = viewTimeline(CONFIG.timelineTitle, CONFIG.timelineSubtitle);
-    else if (parts[0] === "me") html = viewAbout();
+    if (page === "home") html = viewHome();
+    else if ((page === "writeups" || page === "projects") && parts[1])
+      html = viewPost(pageList(page), parts[1], page);
+    else if (page === "writeups" || page === "projects")
+      html = viewList(pageList(page), page);
+    else if (page === "notes") html = viewNotes(parts[1]);
+    else if (page === "timeline") html = viewTimeline();
+    else if (page === "about") html = viewAbout();
     else html = view404();
 
     if (app) app.innerHTML = `<div class="fade-route">${html}</div>`;
@@ -367,7 +593,7 @@ function render(path) {
     console.error("Render error:", err);
     if (app) {
       app.innerHTML = `<div class="wrap" style="padding-top:100px; color:red;">
-        <h2>Render Error</h2>
+        <h2>${escapeHTML(cfg("ui.renderError", "Render Error"))}</h2>
         <pre style="background:var(--surface); padding:20px; border-radius:12px; white-space:pre-wrap;">${escapeHTML(err.stack || String(err))}</pre>
       </div>`;
     }
@@ -377,76 +603,107 @@ function render(path) {
 }
 
 /* ========================= VIEW TEMPLATES ========================= */
-function cardHTML(item, base) {
+function cardHTML(item, page) {
   const tagParts = (item.tag || "")
     .split("·")
     .map((t) => t.trim().toLowerCase())
     .filter(Boolean);
-  return `<a class="card reveal-scale" href="#/${escapeHTML(base)}/${escapeHTML(item.slug)}" data-tags="${escapeHTML(tagParts.join(","))}">
+  return `<a class="card reveal-scale" href="${escapeHTML(hrefFor(page, item.slug))}" data-tags="${escapeHTML(tagParts.join(","))}">
     <div class="tag">${escapeHTML(item.tag)}</div>
     <h3>${escapeHTML(item.title)}</h3>
     <p>${escapeHTML(item.excerpt)}</p>
     ${item.pills ? `<div class="pillrow">${item.pills.map((p) => `<span class="pill">${escapeHTML(p)}</span>`).join("")}</div>` : ""}
-    <div class="cf"><span>${escapeHTML(item.date)}</span><span class="card-arrow">↗</span></div>
+    <div class="cf"><span>${escapeHTML(item.date)}</span><span class="card-arrow">${escapeHTML(cfg("ui.arrow", "↗"))}</span></div>
   </a>`;
 }
 
 function viewHome() {
-  const writeupsList = typeof WRITEUPS !== "undefined" ? WRITEUPS : [];
-  const projectsList = typeof PROJECTS !== "undefined" ? PROJECTS : [];
+  const H = cfg("pages.home", {});
+  const hero = H.hero || {};
+  const notesCount = getAllNotes().length;
+  const counts = {
+    writeups: pageList("writeups").length,
+    projects: pageList("projects").length,
+    notes: notesCount,
+    timeline: cfg("pages.timeline.items", []).length,
+  };
+  const arrow = escapeHTML(cfg("ui.arrow", "↗"));
+  const chips = Array.isArray(hero.chips) ? hero.chips : [];
+  const avatarAlt = hero.avatarAlt != null ? hero.avatarAlt : cfg("site.brand", "");
+  const heroTitle = hero.title != null ? hero.title : cfg("site.brand", "");
+
+  const btnClass = { solid: "btn solid", outline: "btn", ghost: "btn ghost" };
+  const buttons = (H.buttons || [])
+    .map((b) => {
+      const href = b.url ? sanitizeUrl(b.url) : escapeHTML(b.page ? hrefFor(b.page) : "#/");
+      const ext = b.url && !/^#/.test(b.url) ? ' target="_blank" rel="noopener noreferrer"' : "";
+      return `<a class="${btnClass[b.style] || "btn"}" href="${href}"${ext}>${escapeHTML(b.label)}</a>`;
+    })
+    .join("");
+
+  const exploreCards = ((H.explore && H.explore.cards) || [])
+    .map((c) => {
+      const n = counts[c.page] != null ? counts[c.page] : 0;
+      return `<a class="explore reveal-scale" href="${escapeHTML(hrefFor(c.page))}"><div class="ex-top"><span>${escapeHTML(fmtCount(n, c.count || "{n}", c.countOne))}</span><span class="card-arrow">${arrow}</span></div><h3>${escapeHTML(c.title)}</h3><p>${escapeHTML(c.text)}</p></a>`;
+    })
+    .join("");
+
+  const latest = H.latest || {};
+  const latestBlock = (page) => {
+    const L = latest[page];
+    if (!L || L.show === false) return "";
+    const list = pageList(page);
+    const how = Math.max(1, parseInt(latest.count, 10) || 2);
+    const empties = (L.empty || [])
+      .map((e) => `<div class="empty-card reveal-scale"><b>${escapeHTML(e.title)}</b>${escapeHTML(e.text)}</div>`)
+      .join("");
+    return `
+  <section class="wrap tight">
+    <div class="sechead reveal"><h2>${escapeHTML(L.heading)}</h2><a href="${escapeHTML(hrefFor(page))}">${escapeHTML(L.viewAll || "")}</a></div>
+    ${
+      list.length
+        ? `<div class="grid">${list.slice(0, how).map((w) => cardHTML(w, page)).join("")}</div>`
+        : `<div class="grid">${empties}</div>`
+    }
+  </section>`;
+  };
 
   return `
   <section class="hero wrap">
     <div class="hero-content">
       <div class="hero-text">
-        <h1 class="reveal" id="glitch">${escapeHTML(CONFIG.heroTitle)}</h1>
-        <p class="reveal hero-subtitle">${escapeHTML(CONFIG.heroSubtitle)}</p>
-        <div class="stats reveal">
-          <span>${writeupsList.length} writeups</span>
-          <span>${projectsList.length} projects</span>
-          <span>est. 2007</span>
-        </div>
-        <div class="cta reveal">
-          <a class="btn" href="#/writeups">read writeups →</a>
-          <a class="btn" href="#/projects">view projects →</a>
-          <a class="btn ghost" href="#/me">about me</a>
-        </div>
+        ${hero.status ? `<div class="hero-status reveal">${escapeHTML(hero.status)}</div>` : ""}
+        <h1 class="reveal" id="glitch">${escapeHTML(heroTitle)}</h1>
+        <div class="hero-role reveal" id="hero-role" aria-live="off"><span class="prompt">&gt;</span><span id="hero-role-text"></span><span class="caret" aria-hidden="true"></span></div>
+        ${hero.subtitle ? `<p class="reveal hero-subtitle">${escapeHTML(hero.subtitle)}</p>` : ""}
+        ${buttons ? `<div class="cta reveal">${buttons}</div>` : ""}
       </div>
-      <div class="hero-avatar reveal">
+      <div class="hero-avatar reveal-scale">
         <picture>
-          <source srcset="media/pfp.webp" type="image/webp">
-          <img class="hero-avatar-img" src="media/pfp.jpg" alt="${escapeHTML(CONFIG.brand)}" loading="eager" fetchpriority="high" width="280" height="280">
+          <source srcset="${escapeHTML(avatarSrc("webp"))}" type="image/webp">
+          <img class="hero-avatar-img" src="${escapeHTML(avatarSrc("jpg"))}" alt="${escapeHTML(avatarAlt)}" loading="eager" fetchpriority="high" width="420" height="420">
         </picture>
+        ${chips.slice(0, 3).map((c) => `<span class="hero-chip" aria-hidden="true">${escapeHTML(c)}</span>`).join("")}
       </div>
     </div>
   </section>
+
   ${
-    writeupsList.length > 0
-      ? `
-  <section class="wrap">
-    <div class="sechead reveal"><h2>${escapeHTML(CONFIG.writeupsTitle)}</h2><a href="#/writeups">view all →</a></div>
-    <div class="grid">${writeupsList
-      .slice(0, 2)
-      .map((w) => cardHTML(w, "writeups"))
-      .join("")}</div>
+    exploreCards
+      ? `<section class="wrap tight">
+    <div class="sechead reveal"><h2>${escapeHTML((H.explore && H.explore.heading) || "")}</h2></div>
+    <div class="explore-grid">${exploreCards}</div>
   </section>`
       : ""
   }
-  ${
-    projectsList.length > 0
-      ? `
-  <section class="wrap" style="margin-top:60px;">
-    <div class="sechead reveal"><h2>${escapeHTML(CONFIG.projectsTitle)}</h2><a href="#/projects">view all →</a></div>
-    <div class="grid">${projectsList
-      .slice(0, 2)
-      .map((p) => cardHTML(p, "projects"))
-      .join("")}</div>
-  </section>`
-      : ""
-  }`;
+
+  ${latestBlock("writeups")}
+  ${latestBlock("projects")}
+`;
 }
 
-function viewList(arr, title, sub, base) {
+function viewList(arr, page) {
+  const P = cfg("pages." + page, {});
   const allTags = [
     ...new Set(
       arr.flatMap((i) =>
@@ -459,23 +716,23 @@ function viewList(arr, title, sub, base) {
   ];
   return `
   <section class="wrap" style="padding-top:50px;">
-    <div class="eyebrow reveal">${arr.length} entries</div>
-    <h1 class="reveal" style="font-size:clamp(46.9px,7.8vw,81.2px); margin:12px 0 8px;">${escapeHTML(title)}</h1>
-    <p class="reveal" style="color:var(--muted); max-width:520px; margin-bottom:28px;">${escapeHTML(sub)}</p>
+    <div class="eyebrow reveal">${escapeHTML(fmtCount(arr.length, P.entries || "{n}", P.entriesOne))}</div>
+    <h1 class="reveal" style="font-size:clamp(46.9px,7.8vw,81.2px); margin:12px 0 8px;">${escapeHTML(P.heading)}</h1>
+    <p class="reveal" style="color:var(--muted); max-width:520px; margin-bottom:28px;">${escapeHTML(P.subtitle)}</p>
     ${
       allTags.length > 1
         ? `<div class="filterbar reveal" id="filterbar">
-      <button class="chip active" data-filter="all">all</button>
+      <button class="chip active" data-filter="all">${escapeHTML(P.filterAll || "all")}</button>
       ${allTags.map((t) => `<button class="chip" data-filter="${escapeHTML(t)}">${escapeHTML(t)}</button>`).join("")}
     </div>`
         : ""
     }
     ${
       arr.length === 0
-        ? `<div style="padding:60px 0; color:var(--dim); font-family:var(--mono);">No ${escapeHTML(base)} published yet. Check back soon.</div>`
-        : `<div class="grid" id="cardgrid">${arr.map((i) => cardHTML(i, base)).join("")}</div>`
+        ? `<div style="padding:60px 0; color:var(--dim); font-family:var(--mono);">${escapeHTML(P.empty)}</div>`
+        : `<div class="grid" id="cardgrid">${arr.map((i) => cardHTML(i, page)).join("")}</div>`
     }
-    <p id="filter-empty" class="palette-empty" style="display:none;">Nothing matches that tag.</p>
+    <p id="filter-empty" class="palette-empty" style="display:none;">${escapeHTML(P.noMatch)}</p>
   </section>
   `;
 }
@@ -567,9 +824,11 @@ function mdToHtmlWithOutline(md) {
   return { html, outline };
 }
 
-function viewPost(arr, slug, base) {
+function viewPost(arr, slug, page) {
   const item = arr.find((x) => x.slug === slug);
   if (!item) return view404();
+  const P = cfg("pages." + page, {});
+  const PO = cfg("pages.post", {});
   const { html, outline } = mdToHtmlWithOutline(item.body);
   const wordCount = (item.body || "").split(/\s+/).length;
   const readTime = Math.max(1, Math.round(wordCount / 200));
@@ -577,16 +836,18 @@ function viewPost(arr, slug, base) {
     .filter((x) => x.slug !== slug)
     .sort(() => 0.5 - Math.random())
     .slice(0, 2);
+  const authorName = (PO.author && PO.author.name) || cfg("site.brand", "");
+  const authorTag = (PO.author && PO.author.tagline) || cfg("pages.about.heading", "");
 
   return `
   <div class="wrap" style="padding-top:26px;">
-    <a href="#/${escapeHTML(base)}" style="font-family:var(--mono); font-size:18.8px; color:var(--muted);">← back to ${escapeHTML(base)}</a>
+    <a href="${escapeHTML(hrefFor(page))}" style="font-family:var(--mono); font-size:18.8px; color:var(--muted);">${escapeHTML(P.backLabel)}</a>
     <div class="postlayout">
       ${
         outline.length > 0
           ? `
       <aside class="outline" id="outline">
-        <div class="otitle">on this page</div>
+        <div class="otitle">${escapeHTML(PO.outlineTitle)}</div>
         ${outline.map((o) => `<a href="#${escapeHTML(o.id)}" class="${o.depth === 3 ? "h3" : ""}" data-target="${escapeHTML(o.id)}">${escapeHTML(o.text)}</a>`).join("")}
       </aside>`
           : "<div></div>"
@@ -595,27 +856,27 @@ function viewPost(arr, slug, base) {
         <div class="article-head">
           <div class="eyebrow">${escapeHTML(item.tag)}</div>
           <h1>${escapeHTML(item.title)}</h1>
-          <div class="metarow"><span>${escapeHTML(item.date)}</span><span>${readTime} min read</span></div>
+          <div class="metarow"><span>${escapeHTML(item.date)}</span><span>${escapeHTML(fmt(PO.readTime || "{n} min read", { n: readTime }))}</span></div>
         </div>
         <div class="article-body" id="articlebody">${html}</div>
       </article>
       <aside class="right-panel">
         <div class="author-card">
           <picture>
-            <source srcset="media/pfp.webp" type="image/webp">
-            <img src="media/pfp.jpg" alt="${escapeHTML(CONFIG.brand)}" loading="lazy" width="90" height="90" style="width:90px; height:90px; border-radius:50%; margin-bottom:14px; border:2px solid var(--border-strong); object-fit:cover;">
+            <source srcset="${escapeHTML(avatarSrc("webp"))}" type="image/webp">
+            <img src="${escapeHTML(avatarSrc("jpg"))}" alt="${escapeHTML(authorName)}" loading="lazy" width="90" height="90" style="width:90px; height:90px; border-radius:50%; margin-bottom:14px; border:2px solid var(--border-strong); object-fit:cover;">
           </picture>
-          <div style="font-size:24px; font-weight:800; margin-bottom:6px;">${escapeHTML(CONFIG.brand)}</div>
-          <p style="color:var(--muted); font-size:15px; line-height:1.4;">${escapeHTML(ABOUT.tagline)}</p>
+          <div style="font-size:24px; font-weight:800; margin-bottom:6px;">${escapeHTML(authorName)}</div>
+          <p style="color:var(--muted); font-size:15px; line-height:1.4;">${escapeHTML(authorTag)}</p>
         </div>
         ${
           suggestions.length
             ? `<div class="suggestions">
-          <div class="otitle" style="color:var(--dim); letter-spacing:.14em; font-size:16.4px; margin-bottom:14px; font-family:var(--mono); text-transform:uppercase;">suggested reads</div>
+          <div class="otitle" style="color:var(--dim); letter-spacing:.14em; font-size:16.4px; margin-bottom:14px; font-family:var(--mono); text-transform:uppercase;">${escapeHTML(PO.suggestedTitle)}</div>
           ${suggestions
             .map(
               (s) => `
-            <a href="#/${escapeHTML(base)}/${escapeHTML(s.slug)}" class="sug-card">
+            <a href="${escapeHTML(hrefFor(page, s.slug))}" class="sug-card">
               <h4>${escapeHTML(s.title)}</h4>
               <p>${escapeHTML(s.date)}</p>
             </a>
@@ -631,14 +892,15 @@ function viewPost(arr, slug, base) {
   `;
 }
 
-function viewTimeline(title, subtitle) {
+function viewTimeline() {
+  const T = cfg("pages.timeline", {});
   return `
   <section class="wrap" style="padding-top:50px;">
-    <div class="eyebrow reveal">journey log</div>
-    <h1 class="reveal" style="font-size:clamp(46.9px,7.8vw,81.2px); margin:12px 0 8px;">${escapeHTML(title)}</h1>
-    ${subtitle ? `<p class="reveal" style="color:var(--muted); max-width:520px; margin-bottom:44px;">${escapeHTML(subtitle)}</p>` : ""}
+    <div class="eyebrow reveal">${escapeHTML(T.eyebrow)}</div>
+    <h1 class="reveal" style="font-size:clamp(46.9px,7.8vw,81.2px); margin:12px 0 8px;">${escapeHTML(T.heading)}</h1>
+    ${T.subtitle ? `<p class="reveal" style="color:var(--muted); max-width:520px; margin-bottom:44px;">${escapeHTML(T.subtitle)}</p>` : ""}
     <div class="tl">
-      ${TIMELINE.map(
+      ${(T.items || []).map(
         (t) => `<div class="tlitem reveal-left">
         <div class="tldate">${escapeHTML(t.date)}</div>
         <h3>${escapeHTML(t.title)}</h3>
@@ -651,26 +913,32 @@ function viewTimeline(title, subtitle) {
 }
 
 function viewAbout() {
+  const A = cfg("pages.about", {});
+  const M = cfg("music", {});
+  const MC = M.controls || {};
+  const ST = M.status || {};
   const playlist = typeof PLAYLIST !== "undefined" ? PLAYLIST : [];
+  const musicHeading = escapeHTML(M.heading);
+  const avatarAlt = cfg("site.brand", "");
   return `
   <section class="wrap" style="padding-top:50px;">
     <div class="about-header reveal">
       <picture>
-        <source srcset="media/pfp.webp" type="image/webp">
-        <img class="about-header-img" src="media/pfp.jpg" alt="${escapeHTML(CONFIG.brand)}" loading="lazy" width="120" height="120">
+        <source srcset="${escapeHTML(avatarSrc("webp"))}" type="image/webp">
+        <img class="about-header-img" src="${escapeHTML(avatarSrc("jpg"))}" alt="${escapeHTML(avatarAlt)}" loading="lazy" width="120" height="120">
       </picture>
       <div class="about-header-text">
-        <div class="eyebrow">From the author</div>
-        <h1>${escapeHTML(ABOUT.tagline)}</h1>
+        <div class="eyebrow">${escapeHTML(A.eyebrow)}</div>
+        <h1>${escapeHTML(A.heading)}</h1>
       </div>
     </div>
 
     <div class="about-grid">
       <aside class="about-sidebar reveal">
-        <div class="music-widget" id="music-widget">
+        ${playlist.length === 0 ? `<div class="empty-music">${escapeHTML(M.emoji || "")} ${musicHeading}<br><span style="font-size:15px">${escapeHTML(M.emptyText)}</span></div>` : `<div class="music-widget" id="music-widget">
           <div class="mw-header">
             <div class="mw-label">
-              <span>Music I Madeeee</span>
+              <span>${musicHeading}</span>
             </div>
             <div class="mw-bars" id="mw-bars"></div>
           </div>
@@ -685,8 +953,8 @@ function viewAbout() {
               </svg>
             </div>
             <div class="mw-meta">
-              <div class="mw-title" id="mw-title">${escapeHTML(playlist[0]?.title || "No Track")}</div>
-              <div class="mw-artist" id="mw-artist">${escapeHTML(playlist[0]?.artist || "Unknown")}</div>
+              <div class="mw-title" id="mw-title">${escapeHTML(playlist[0]?.title || M.noTrack)}</div>
+              <div class="mw-artist" id="mw-artist">${escapeHTML(playlist[0]?.artist || M.unknownArtist)}</div>
             </div>
           </div>
 
@@ -701,20 +969,20 @@ function viewAbout() {
           </div>
 
           <div class="mw-controls">
-            <button class="mw-btn" id="mw-prev-btn" aria-label="Previous Track" title="Previous">
+            <button class="mw-btn" id="mw-prev-btn" aria-label="${escapeHTML(MC.prev)}" title="${escapeHTML(MC.prevTitle)}">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
             </button>
-            <button class="mw-btn mw-play" id="mw-play-btn" aria-label="Play / Pause" title="Play">
+            <button class="mw-btn mw-play" id="mw-play-btn" aria-label="${escapeHTML(MC.playPause)}" title="${escapeHTML(MC.playTitle)}">
               <svg id="mw-play-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
               <svg id="mw-pause-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
             </button>
-            <button class="mw-btn" id="mw-next-btn" aria-label="Next Track" title="Next">
+            <button class="mw-btn" id="mw-next-btn" aria-label="${escapeHTML(MC.next)}" title="${escapeHTML(MC.nextTitle)}">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
             </button>
           </div>
 
           <div class="mw-playlist">
-            <div class="mw-playlist-head">TRACKLIST</div>
+            <div class="mw-playlist-head">${escapeHTML(M.tracklistHeading)}</div>
             <div class="mw-tracklist" id="mw-tracklist">
               ${playlist
                 .map(
@@ -724,41 +992,29 @@ function viewAbout() {
                     <span class="mw-track-num">${String(idx + 1).padStart(2, "0")}</span>
                     <span class="mw-track-name">${escapeHTML(t.title)}</span>
                   </div>
-                  <span class="mw-track-status">${idx === 0 ? "READY" : ""}</span>
+                  <span class="mw-track-status">${idx === 0 ? escapeHTML(ST.ready || "") : ""}</span>
                 </div>
               `,
                 )
                 .join("")}
             </div>
           </div>
-        </div>
+        </div>`}
       </aside>
 
-      <div class="about-main reveal-left">
-        <p class="about-bio">${escapeHTML(ABOUT.bio)}</p>
+      <div class="about-main reveal-left" style="grid-column:auto;">
+        <p class="about-bio">${escapeHTML(A.bio)}</p>
 
-        <div style="margin-top:44px;">
-          <div class="about-subhead">Interests</div>
+        <div class="about-block">
+          <div class="about-subhead">${escapeHTML(A.interestsHeading)}</div>
           <div class="pillgrid">
-            ${ABOUT.skills.map((s) => `<div class="pill">${escapeHTML(s)}</div>`).join("")}
+            ${(A.skills || []).map((s) => `<div class="pill">${escapeHTML(s)}</div>`).join("")}
           </div>
         </div>
 
-        <div style="margin-top:44px;">
-          <div class="about-subhead">FIND ME AROUND</div>
-          <div class="contactlist">
-            ${ABOUT.contacts.map(([label, href, icon]) => renderContactCard(label, href, icon)).join("")}
-            <div class="discord-plate" onclick="navigator.clipboard.writeText('piezuke'); const t=this.querySelector('.discord-copy'); t.textContent='Copied!'; setTimeout(()=>t.textContent='Copy', 2000)">
-              <div class="discord-icon">
-                <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
-              </div>
-              <div class="discord-info">
-                <span class="discord-label">Discord</span>
-                <span class="discord-user">piezuke</span>
-              </div>
-              <div class="discord-copy">Copy</div>
-            </div>
-          </div>
+        <div class="about-block">
+          <div class="about-subhead">${escapeHTML(A.socialsHeading)}</div>
+          ${socialsHTML()}
         </div>
       </div>
     </div>
@@ -767,7 +1023,8 @@ function viewAbout() {
 }
 
 function view404() {
-  return `<div class="wrap" style="padding-top:100px;"><h2>${escapeHTML(CONFIG.error404Title || "404 Not Found")}</h2><p>${escapeHTML(CONFIG.error404Text || "Nothing here.")}</p></div>`;
+  const N = cfg("pages.notFound", {});
+  return `<div class="wrap" style="padding-top:100px;"><h2>${escapeHTML(N.heading || "404 Not Found")}</h2><p>${escapeHTML(N.text || "")}</p></div>`;
 }
 
 /* ========================= NOTES VAULT ========================= */
@@ -813,7 +1070,7 @@ function renderNoteTree(nodes, activeIdReal, depth = 0, parentPath = "") {
   if (!nodes || !Array.isArray(nodes)) return "";
   return nodes
     .map((node) => {
-      const folderName = node.folder || node.name || "folder";
+      const folderName = node.folder || node.name || cfg("pages.notes.unnamedFolder", "folder");
       const subfolders = node.folders || [];
       const notes = node.notes || [];
       const currentPath = parentPath
@@ -842,8 +1099,8 @@ function renderNoteTree(nodes, activeIdReal, depth = 0, parentPath = "") {
       const notesHtml = notes
         .map(
           (n) => `
-      <a href="#/notes/${escapeHTML(n.id)}" class="notenode ${n.id === activeIdReal ? "active" : ""}">
-        <span class="note-icon">📄</span>
+      <a href="${escapeHTML(hrefFor("notes", n.id))}" class="notenode ${n.id === activeIdReal ? "active" : ""}">
+        <span class="note-icon">${escapeHTML(cfg("pages.notes.icons.note", "📄"))}</span>
         <span class="note-title-text">${escapeHTML(n.title)}</span>
       </a>
     `,
@@ -854,7 +1111,7 @@ function renderNoteTree(nodes, activeIdReal, depth = 0, parentPath = "") {
       <div class="folder-group ${isCollapsed ? "collapsed" : ""}" data-folder-path="${escapeHTML(currentPath)}">
         <div class="folder" onclick="toggleFolder(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleFolder(this);}" role="button" tabindex="0" aria-expanded="${!isCollapsed}">
           <span class="folder-arrow">▾</span>
-          <span class="folder-icon">${isCollapsed ? "📁" : "📂"}</span>
+          <span class="folder-icon">${escapeHTML(isCollapsed ? cfg("pages.notes.icons.folderClosed", "📁") : cfg("pages.notes.icons.folderOpen", "📂"))}</span>
           <span class="folder-name">${escapeHTML(folderName)}</span>
           ${totalNotesCount > 0 ? `<span class="folder-badge">${totalNotesCount}</span>` : ""}
         </div>
@@ -876,7 +1133,7 @@ function toggleFolder(el) {
   group.classList.toggle("collapsed", isNowCollapsed);
   el.setAttribute("aria-expanded", !isNowCollapsed);
   const icon = group.querySelector(":scope > .folder .folder-icon");
-  if (icon) icon.textContent = isNowCollapsed ? "📁" : "📂";
+  if (icon) icon.textContent = isNowCollapsed ? cfg("pages.notes.icons.folderClosed", "📁") : cfg("pages.notes.icons.folderOpen", "📂");
   userFolderStates[path] = isNowCollapsed;
 }
 
@@ -889,7 +1146,7 @@ function toggleAllFolders(expand) {
     const btn = g.querySelector(":scope > .folder");
     if (btn) btn.setAttribute("aria-expanded", String(expand));
     const icon = g.querySelector(":scope > .folder .folder-icon");
-    if (icon) icon.textContent = expand ? "📂" : "📁";
+    if (icon) icon.textContent = expand ? cfg("pages.notes.icons.folderOpen", "📂") : cfg("pages.notes.icons.folderClosed", "📁");
   });
 }
 
@@ -957,7 +1214,7 @@ function renderNotesOutline(outline) {
   if (!outline || outline.length === 0) return "";
   return `
     <div style="margin-top:40px; border-top:1px solid var(--border); padding-top:20px;" class="outline">
-      <div class="folder" style="cursor:default;">ON THIS PAGE</div>
+      <div class="folder" style="cursor:default;">${escapeHTML(cfg("pages.notes.outlineTitle", ""))}</div>
       ${outline.map((o) => `<a href="#${escapeHTML(o.id)}" class="notenode" data-target="${escapeHTML(o.id)}" style="${o.depth === 3 ? "padding-left:24px; font-size:0.9em;" : ""}">${escapeHTML(o.text)}</a>`).join("")}
     </div>`;
 }
@@ -968,14 +1225,14 @@ function viewNotes(activeId) {
   const activeIdReal = active ? active.id : "";
   let body = active
     ? active.body
-    : "# Select a note\n\nPick something from the sidebar.";
+    : cfg("pages.notes.emptyBody", "");
 
   // Support Obsidian-style [[Wiki Links]]
   body = body.replace(/\[\[([^\]]+)\]\]/g, (m, name) => {
     const target = allNotes.find(
       (n) => n.title.toLowerCase() === name.toLowerCase(),
     );
-    return target ? `[${name}](#/notes/${target.id})` : name;
+    return target ? `[${name}](${hrefFor("notes", target.id)})` : name;
   });
 
   const { html, outline } = mdToHtmlWithOutline(body);
@@ -985,10 +1242,10 @@ function viewNotes(activeId) {
   <div class="noteswrap" id="noteswrap" style="--notes-sidebar-w: ${getNotesSidebarWidth()}px;">
     <div class="notetree" id="notetree">
       <div class="notetree-header">
-        <span class="notetree-header-title">VAULT / NOTES</span>
+        <span class="notetree-header-title">${escapeHTML(cfg("pages.notes.vaultTitle", ""))}</span>
         <div class="notetree-header-actions">
-          <button class="notetree-act-btn" onclick="toggleAllFolders(true)" title="Expand all folders" aria-label="Expand all folders">⊞</button>
-          <button class="notetree-act-btn" onclick="toggleAllFolders(false)" title="Collapse all folders" aria-label="Collapse all folders">⊟</button>
+          <button class="notetree-act-btn" onclick="toggleAllFolders(true)" title="${escapeHTML(cfg("pages.notes.expandAll", ""))}" aria-label="${escapeHTML(cfg("pages.notes.expandAll", ""))}">${escapeHTML(cfg("pages.notes.expandIcon", "⊞"))}</button>
+          <button class="notetree-act-btn" onclick="toggleAllFolders(false)" title="${escapeHTML(cfg("pages.notes.collapseAll", ""))}" aria-label="${escapeHTML(cfg("pages.notes.collapseAll", ""))}">${escapeHTML(cfg("pages.notes.collapseIcon", "⊟"))}</button>
         </div>
       </div>
       <div class="notetree-items">
@@ -1000,11 +1257,11 @@ function viewNotes(activeId) {
       </div>
 
       <div class="notetree-footer">
-        <span class="notetree-footer-status">VAULT / ${allNotes.length} NOTES</span>
-        <span class="notetree-footer-badge">READY</span>
+        <span class="notetree-footer-status">${escapeHTML(fmt(cfg("pages.notes.status", "{n}"), { n: allNotes.length }))}</span>
+        <span class="notetree-footer-badge">${escapeHTML(cfg("pages.notes.badge", ""))}</span>
       </div>
     </div>
-    <div class="notetree-resizer" id="notetree-resizer" role="separator" aria-orientation="vertical" title="Drag to resize sidebar (Double-click to reset)"></div>
+    <div class="notetree-resizer" id="notetree-resizer" role="separator" aria-orientation="vertical" title="${escapeHTML(cfg("pages.notes.resizerTitle", ""))}"></div>
     <div class="noteMain" id="noteMain">
       <div class="article-body reveal in-view">${html}</div>
     </div>
@@ -1017,13 +1274,13 @@ function updateActiveNoteInView(activeId) {
   const activeIdReal = active ? active.id : "";
   let body = active
     ? active.body
-    : "# Select a note\n\nPick something from the sidebar.";
+    : cfg("pages.notes.emptyBody", "");
 
   body = body.replace(/\[\[([^\]]+)\]\]/g, (m, name) => {
     const target = allNotes.find(
       (n) => n.title.toLowerCase() === name.toLowerCase(),
     );
-    return target ? `[${name}](#/notes/${target.id})` : name;
+    return target ? `[${name}](${hrefFor("notes", target.id)})` : name;
   });
 
   const { html, outline } = mdToHtmlWithOutline(body);
@@ -1045,7 +1302,7 @@ function updateActiveNoteInView(activeId) {
   const tree = document.getElementById("notetree");
   if (tree) {
     tree.querySelectorAll(".notetree-items .notenode").forEach((node) => {
-      const isTarget = node.getAttribute("href") === `#/notes/${activeIdReal}`;
+      const isTarget = node.getAttribute("href") === hrefFor("notes", activeIdReal);
       node.classList.toggle("active", isTarget);
       if (isTarget) {
         let parent = node.closest(".folder-group");
@@ -1057,7 +1314,7 @@ function updateActiveNoteInView(activeId) {
             const btn = parent.querySelector(":scope > .folder");
             if (btn) btn.setAttribute("aria-expanded", "true");
             const icon = parent.querySelector(":scope > .folder .folder-icon");
-            if (icon) icon.textContent = "📂";
+            if (icon) icon.textContent = cfg("pages.notes.icons.folderOpen", "📂");
           }
           parent = parent.parentElement
             ? parent.parentElement.closest(".folder-group")
@@ -1085,10 +1342,10 @@ if (bttBtn) {
   function updateBttBtn() {
     if (window.scrollY > 300) {
       bttBtn.classList.remove("pointing-down");
-      bttBtn.title = "Back to top";
+      bttBtn.title = cfg("ui.backToTop.top", "Back to top");
     } else {
       bttBtn.classList.add("pointing-down");
-      bttBtn.title = "Scroll to bottom";
+      bttBtn.title = cfg("ui.backToTop.bottom", "Scroll to bottom");
     }
     bttScrollTicking = false;
   }
@@ -1121,29 +1378,29 @@ if (bttBtn) {
 
   if (window.scrollY <= 300) {
     bttBtn.classList.add("pointing-down");
-    bttBtn.title = "Scroll to bottom";
+    bttBtn.title = cfg("ui.backToTop.bottom", "Scroll to bottom");
   }
 }
 
 function setupReveal() {
+  const els = document.querySelectorAll(".reveal, .reveal-left, .reveal-scale");
   if (typeof IntersectionObserver === "undefined") {
-    document
-      .querySelectorAll(".reveal, .reveal-left, .reveal-scale")
-      .forEach((el) => el.classList.add("in-view"));
+    els.forEach((el) => el.classList.add("in-view"));
     return;
   }
   if (observer) observer.disconnect();
   observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((e) => {
-        e.target.classList.toggle("in-view", e.isIntersecting);
+        if (e.isIntersecting) {
+          e.target.classList.add("in-view");
+          observer.unobserve(e.target); // reveal once; avoids flicker + stuck-hidden tall blocks
+        }
       });
     },
-    { threshold: 0.15 },
+    { threshold: 0.05, rootMargin: "0px 0px -6% 0px" },
   );
-  document
-    .querySelectorAll(".reveal, .reveal-left, .reveal-scale")
-    .forEach((el) => observer.observe(el));
+  els.forEach((el) => observer.observe(el));
 }
 
 let scrollHandler = null;
@@ -1201,8 +1458,8 @@ function setupCodeCopy() {
     const btn = document.createElement("button");
     btn.className = "code-copy";
     btn.type = "button";
-    btn.textContent = "copy";
-    btn.setAttribute("aria-label", "Copy code to clipboard");
+    btn.textContent = cfg("ui.code.copy", "copy");
+    btn.setAttribute("aria-label", cfg("ui.code.label", "Copy code to clipboard"));
     btn.onclick = async () => {
       const code = pre.querySelector("code");
       const text = code ? code.innerText : pre.innerText;
@@ -1218,10 +1475,10 @@ function setupCodeCopy() {
         } catch (err) {}
         ta.remove();
       }
-      btn.textContent = "copied ✓";
+      btn.textContent = cfg("ui.code.copied", "copied ✓");
       btn.classList.add("copied");
       setTimeout(() => {
-        btn.textContent = "copy";
+        btn.textContent = cfg("ui.code.copy", "copy");
         btn.classList.remove("copied");
       }, 1400);
     };
@@ -1267,6 +1524,43 @@ function setupOutlineListeners() {
 }
 
 let glitchInterval = null;
+let roleTimer = null;
+
+function setupHeroRoles() {
+  if (roleTimer) {
+    clearTimeout(roleTimer);
+    roleTimer = null;
+  }
+  const el = document.getElementById("hero-role-text");
+  const roles = cfg("pages.home.hero.roles", []);
+  if (!el || !roles.length) return;
+  const reduce =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) {
+    el.textContent = roles[0];
+    return;
+  }
+  let ri = 0,
+    ci = 0,
+    del = false;
+  (function tick() {
+    if (!document.body.contains(el)) return;
+    const word = roles[ri];
+    ci += del ? -1 : 1;
+    el.textContent = word.slice(0, ci);
+    let wait = del ? 28 : 65;
+    if (!del && ci === word.length) {
+      del = true;
+      wait = 1700;
+    } else if (del && ci === 0) {
+      del = false;
+      ri = (ri + 1) % roles.length;
+      wait = 350;
+    }
+    roleTimer = setTimeout(tick, wait);
+  })();
+}
 
 function afterRender(path) {
   setupOutlineListeners();
@@ -1275,8 +1569,13 @@ function afterRender(path) {
   setupTagFilters();
   if (typeof setupMusicPlayer === "function") setupMusicPlayer();
   initNotesResizer();
+  setupCopyTiles();
+  setupHeroRoles();
 
-  const isPost = /^\/(writeups|projects)\/[^/]+/.test(path);
+  const seg = path.split("/").filter(Boolean);
+  const isPost =
+    seg.length > 1 &&
+    (seg[0] === slugOf("writeups") || seg[0] === slugOf("projects"));
   setupProgress(isPost ? "articlebody" : null);
 
   // Glitch flicker on home hero title
@@ -1298,15 +1597,52 @@ function afterRender(path) {
 }
 
 /* ========================= SITE INIT ========================= */
+// Applies text from config to the static HTML shell (index.html):
+//   data-cfg="path"                -> element text
+//   data-cfg-attr="attr:path;..."  -> attributes (title, aria-label, placeholder...)
+//   data-cfg-href="pageKey"        -> link to that page's route
+function applyStaticConfig() {
+  document.querySelectorAll("[data-cfg]").forEach((el) => {
+    const v = cfg(el.getAttribute("data-cfg"));
+    if (typeof v === "string") el.textContent = fmt(v);
+  });
+  document.querySelectorAll("[data-cfg-attr]").forEach((el) => {
+    el.getAttribute("data-cfg-attr")
+      .split(";")
+      .forEach((pair) => {
+        const i = pair.indexOf(":");
+        if (i < 0) return;
+        const v = cfg(pair.slice(i + 1).trim());
+        if (typeof v === "string") el.setAttribute(pair.slice(0, i).trim(), fmt(v));
+      });
+  });
+  document.querySelectorAll("[data-cfg-href]").forEach((el) => {
+    el.setAttribute("href", "#" + routeOf(el.getAttribute("data-cfg-href")));
+  });
+}
+
 function initConfig() {
   if (typeof CONFIG === "undefined") return;
 
+  const lang = cfg("site.language", "");
+  if (lang) document.documentElement.lang = lang;
+
+  const setAttr = (sel, attr, val) => {
+    const el = document.querySelector(sel);
+    if (el && val != null && val !== "") el.setAttribute(attr, val);
+  };
+  setAttr('meta[name="description"]', "content", cfg("site.description"));
+  setAttr('meta[property="og:description"]', "content", cfg("site.description"));
+  setAttr('meta[property="og:title"]', "content", cfg("pages.home.title"));
+  setAttr('meta[property="og:image"]', "content", cfg("site.ogImage"));
+  setAttr('link[rel="icon"]', "href", cfg("site.favicon"));
+
   const cfgBrand = document.getElementById("cfg-brand");
-  if (cfgBrand) cfgBrand.textContent = CONFIG.brand;
+  if (cfgBrand) cfgBrand.textContent = cfg("site.brand", "");
 
   const nav = document.getElementById("navlinks");
-  if (nav && Array.isArray(CONFIG.navLinks)) {
-    nav.innerHTML = CONFIG.navLinks
+  if (nav) {
+    nav.innerHTML = getNavLinks()
       .map(
         (n) =>
           `<a href="#${escapeHTML(n.route)}" data-route="${escapeHTML(n.route)}">${escapeHTML(n.label)}</a>`,
@@ -1314,13 +1650,12 @@ function initConfig() {
       .join("");
   }
 
-  const fq = document.getElementById("cfg-footer-quip");
-  if (fq)
-    fq.textContent =
-      "Coffee Waaaay better than tea. Ainnobody tellin' me otherwise.";
+  applyStaticConfig();
 
+  const fq = document.getElementById("cfg-footer-quip");
+  if (fq) fq.textContent = fmt(cfg("footer.quip", ""));
   const ft = document.getElementById("cfg-footer-text");
-  if (ft) ft.textContent = CONFIG.footerText;
+  if (ft) ft.textContent = fmt(cfg("footer.text", ""));
 }
 
 try {

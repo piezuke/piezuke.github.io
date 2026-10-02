@@ -7,12 +7,20 @@
  * synchronization between the navbar mini-player and About view widget.
  */
 
-const PLAYLIST = [
-  // { title: "Track 01", artist: "Artist TBD", src: "" },
-  // { title: "Track 02", artist: "Artist TBD", src: "" },
-  // { title: "Track 03", artist: "Artist TBD", src: "" },
-  // { title: "Track 04", artist: "Artist TBD", src: "" },
-];
+// Playlist + labels live in config.js  (CONFIG.music)
+const PLAYLIST =
+  typeof CONFIG !== "undefined" && CONFIG.music && Array.isArray(CONFIG.music.playlist)
+    ? CONFIG.music.playlist
+    : [];
+
+function musicStatus(key, fallback) {
+  try {
+    const v = CONFIG.music.status[key];
+    return v == null ? fallback : v;
+  } catch (e) {
+    return fallback;
+  }
+}
 
 let currentTrackIdx = 0;
 let isPlaying = false;
@@ -46,10 +54,10 @@ function updateAllMusicUI() {
   if (miniTitle) miniTitle.textContent = track.title;
   if (miniStatus)
     miniStatus.textContent = isPlaying
-      ? "PLAYING"
+      ? musicStatus("playing", "PLAYING")
       : hasStartedPlaying
-        ? "PAUSED"
-        : "IDLE";
+        ? musicStatus("paused", "PAUSED")
+        : musicStatus("idle", "IDLE");
   if (miniPlayIc) miniPlayIc.style.display = isPlaying ? "none" : "block";
   if (miniPauseIc) miniPauseIc.style.display = isPlaying ? "block" : "none";
 
@@ -77,10 +85,10 @@ function updateAllMusicUI() {
         if (st)
           st.textContent = isActive
             ? !hasStartedPlaying
-              ? "READY"
+              ? musicStatus("ready", "READY")
               : isPlaying
-                ? "PLAYING"
-                : "PAUSED"
+                ? musicStatus("playing", "PLAYING")
+                : musicStatus("paused", "PAUSED")
             : "";
       });
     }

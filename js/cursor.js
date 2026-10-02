@@ -1,61 +1,41 @@
+/**
+ * piezuke_ — kinetic ring cursor
+ * The original ring: eased follow, grows over clickable things, squeezes on press.
+ *
+ * Click-bug hardening (the stray "+" some browsers drew on press):
+ *  - the native cursor is replaced by a transparent image cursor in CSS
+ *    (more reliable than `cursor: none`, which can flash the system cursor)
+ *  - pressing a link/button never starts a native drag or text selection
+ *    (the OS paints its own cursor, with a "+" / link badge, during those)
+ *  - the click ripple is skipped while this cursor is active
+ * Disable with CONFIG.cursor = "off" or ?cursor=off.
+ */
 (function () {
-  function prefersReduced() {
-    return (
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    );
-  }
-  function hasFinePointer() {
-    return (
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(hover: hover) and (pointer: fine)").matches
-    );
-  }
+  const mq = (q) =>
+    typeof window.matchMedia === "function" ? window.matchMedia(q) : null;
+  const fine = mq("(hover: hover) and (pointer: fine)");
+  const reduced = mq("(prefers-reduced-motion: reduce)");
+  if (!fine || !fine.matches || (reduced && reduced.matches)) return;
 
-  if (!hasFinePointer() || prefersReduced()) return;
+  try {
+    const q = new URLSearchParams(window.location.search).get("cursor");
+    if (q && q.toLowerCase() === "off") return;
+  } catch (e) {}
+  if (
+    typeof CONFIG !== "undefined" &&
+    CONFIG.cursor &&
+    String(CONFIG.cursor).toLowerCase() === "off"
+  )
+    return;
 
-  const CURSOR_ALIASES = {
-    ring: "reticle",
-    "dot-ring": "reticle",
-    trail: "reticle",
-    block: "terminal-block",
-    pixel: "pixel-block",
-    glitch: "glitch-trail",
-    trace: "trace-ping",
-    ping: "trace-ping",
-    hex: "hex-addr",
-  };
-
-  const VALID_CURSORS = [
-    "reticle",
-    "terminal-block",
-    "glitch-trail",
-    "pixel-block",
-    "hex-addr",
-    "scope",
-    "trace-ping",
-    "off",
-  ];
-
-  function resolveCursor() {
-    try {
-      const fromUrl = new URLSearchParams(window.location.search).get("cursor");
-      if (fromUrl) {
-        const norm =
-          CURSOR_ALIASES[fromUrl.toLowerCase()] || fromUrl.toLowerCase();
-        if (VALID_CURSORS.includes(norm)) return norm;
-      }
-    } catch (e) {}
-    if (typeof CONFIG !== "undefined" && CONFIG.cursor) {
-      const c = String(CONFIG.cursor).toLowerCase();
-      const norm = CURSOR_ALIASES[c] || c;
-      if (VALID_CURSORS.includes(norm)) return norm;
-    }
-    return "reticle";
-  }
-
-  const cursorStyle = resolveCursor();
-  if (cursorStyle === "off") return;
+  const INTERACTIVE =
+    'a, button, [role="button"], [role="switch"], [onclick], .chip, .pill, .card, ' +
+    ".notenode, .folder, .contact-card, .mw-btn, .mini-btn, .code-copy, label, summary";
+  const PRESSABLE =
+    'a, button, [role="button"], [role="switch"], [onclick], .chip, .card, ' +
+    ".notenode, .folder, .mw-btn, .mini-btn, .code-copy, summary";
+  const NATIVE_TEXT = 'input, textarea, select, [contenteditable="true"]';
+  const NATIVE_OTHER = ".notetree-resizer";
 
   const html = document.documentElement;
   html.classList.add("custom-cursor");
@@ -63,74 +43,9 @@
   const root = document.createElement("div");
   root.className = "cc-root";
   root.setAttribute("aria-hidden", "true");
-
-  // Cursor DOM shapes
-  if (cursorStyle === "terminal-block") {
-    root.insertAdjacentHTML("beforeend", '<div class="cc-block"></div>');
-  } else if (cursorStyle === "glitch-trail") {
-    root.insertAdjacentHTML(
-      "beforeend",
-      '<div class="cc-ghost cc-ghost-3"></div><div class="cc-ghost cc-ghost-2"></div>' +
-        '<div class="cc-ghost cc-ghost-1"></div><div class="cc-glitch-core"></div>',
-    );
-  } else if (cursorStyle === "pixel-block") {
-    root.insertAdjacentHTML(
-      "beforeend",
-      '<div class="cc-pixel cc-pixel-3"></div><div class="cc-pixel cc-pixel-2"></div>' +
-        '<div class="cc-pixel cc-pixel-1"></div><div class="cc-pixel-core"></div>',
-    );
-  } else if (cursorStyle === "hex-addr") {
-    root.insertAdjacentHTML(
-      "beforeend",
-      '<div class="cc-hex-dot"></div><div class="cc-hex-tag"><span class="cc-hex-text">0x0000</span></div>',
-    );
-  } else if (cursorStyle === "scope") {
-    root.insertAdjacentHTML(
-      "beforeend",
-      '<div class="cc-scope-h"></div><div class="cc-scope-v"></div>' +
-        '<div class="cc-scope-dot"></div><div class="cc-scope-tick cc-scope-tl"></div>' +
-        '<div class="cc-scope-tick cc-scope-tr"></div>',
-    );
-  } else if (cursorStyle === "trace-ping") {
-    root.insertAdjacentHTML(
-      "beforeend",
-      '<canvas class="cc-trace-canvas"></canvas><div class="cc-trace-dot"></div>',
-    );
-  } else {
-    // Bold kinetic circular ring (pure circle, zero distortion)
-    root.insertAdjacentHTML("beforeend", '<div class="cc-ring"></div>');
-  }
-
+  root.innerHTML = '<div class="cc-ring"></div>';
   document.body.appendChild(root);
-
   const ring = root.querySelector(".cc-ring");
-  const block = root.querySelector(".cc-block");
-  const glitchCore = root.querySelector(".cc-glitch-core");
-  const ghosts = [
-    root.querySelector(".cc-ghost-1"),
-    root.querySelector(".cc-ghost-2"),
-    root.querySelector(".cc-ghost-3"),
-  ];
-  const pixelCore = root.querySelector(".cc-pixel-core");
-  const pixelDoms = [
-    root.querySelector(".cc-pixel-1"),
-    root.querySelector(".cc-pixel-2"),
-    root.querySelector(".cc-pixel-3"),
-  ];
-  const hexDot = root.querySelector(".cc-hex-dot");
-  const hexTag = root.querySelector(".cc-hex-tag");
-  const hexText = root.querySelector(".cc-hex-text");
-  const scopeH = root.querySelector(".cc-scope-h");
-  const scopeV = root.querySelector(".cc-scope-v");
-  const scopeDot = root.querySelector(".cc-scope-dot");
-  const traceCanvas = root.querySelector(".cc-trace-canvas");
-  const traceDot = root.querySelector(".cc-trace-dot");
-
-  const NATIVE_TEXT = 'input, textarea, select, [contenteditable="true"]';
-  const NATIVE_OTHER = ".notetree-resizer";
-  const INTERACTIVE =
-    'a, button, [role="button"], [onclick], .chip, .pill, .card, ' +
-    ".notenode, .folder, .contact-card, .mw-btn, .mini-btn, .code-copy, label, summary";
 
   let mx = window.innerWidth / 2,
     my = window.innerHeight / 2;
@@ -141,12 +56,7 @@
   let isMouseDown = false;
   let visible = false;
   let isLoopRunning = false;
-
-  const legacyTrail = [];
-  const TRAIL_LEN = 8;
-  const usesLegacyTrail = ["glitch-trail", "pixel-block", "trace-ping"].includes(
-    cursorStyle,
-  );
+  let firstMove = true;
 
   function show() {
     if (!visible) {
@@ -154,78 +64,60 @@
       root.classList.add("visible");
     }
   }
-
-  // The first pointer position snaps the cursor into place, so it doesn't
-  // slide in from the middle of the screen (or flash at 0,0).
-  let firstMove = true;
-
-  function place(el, x, y) {
-    if (el) el.style.transform = "translate3d(" + x + "px," + y + "px,0)";
-  }
-
-  function placePixel(el, x, y) {
-    if (!el) return;
-    const g = 8;
-    el.style.transform =
+  function draw() {
+    ring.style.transform =
       "translate3d(" +
-      Math.round(x / g) * g +
-      "px," +
-      Math.round(y / g) * g +
-      "px,0)";
+      curX +
+      "px, " +
+      curY +
+      "px, 0) scale(" +
+      currentScale.toFixed(3) +
+      ")";
   }
-
   function wakeLoop() {
     if (!isLoopRunning) {
       isLoopRunning = true;
       requestAnimationFrame(mainLoop);
     }
   }
-
   function mainLoop() {
-    // 1. Silky kinetic follow physics (pure smooth inertia, no shape distortion)
+    // silky kinetic follow (pure inertia, no distortion)
     const ease = 0.22;
     curX += (mx - curX) * ease;
     curY += (my - curY) * ease;
 
-    // 2. Smooth scale transitions (expand on hover, compress on click)
+    // expand on hover, compress on click
     const targetScale = isHovered ? 1.75 : 1.0;
     const clickFactor = isMouseDown ? 0.85 : 1.0;
     currentScale += (targetScale * clickFactor - currentScale) * 0.18;
+    draw();
 
-    // Bold circular ring (pure circle, zero deformation)
-    if (ring) {
-      ring.style.transform = `translate3d(${curX}px, ${curY}px, 0) scale(${currentScale.toFixed(3)})`;
-    }
-
-    // Place alternative cursor variants if chosen
-    place(block, curX, curY);
-    place(glitchCore, curX, curY);
-    placePixel(pixelCore, curX, curY);
-    place(hexDot, curX, curY);
-    place(hexTag, curX, curY);
-    if (scopeH) scopeH.style.top = curY + "px";
-    if (scopeV) scopeV.style.left = curX + "px";
-    place(scopeDot, curX, curY);
-    place(traceDot, curX, curY);
-
-    // Check if motion has settled
-    const distToTarget = Math.hypot(mx - curX, my - curY);
-    const isScaling =
-      Math.abs(currentScale - targetScale * clickFactor) > 0.005;
-
-    if (distToTarget > 0.1 || isScaling) {
+    const dist = Math.hypot(mx - curX, my - curY);
+    const scaling = Math.abs(currentScale - targetScale * clickFactor) > 0.005;
+    if (dist > 0.1 || scaling) {
       requestAnimationFrame(mainLoop);
     } else {
       isLoopRunning = false;
       curX = mx;
       curY = my;
-      if (ring) {
-        ring.style.transform = `translate3d(${curX}px, ${curY}px, 0) scale(${currentScale.toFixed(3)})`;
-      }
+      draw();
     }
   }
 
-  // Event Listeners
+  function applyHover(el) {
+    const t = el && el.closest ? el : null;
+    const isNative = t && (t.closest(NATIVE_TEXT) || t.closest(NATIVE_OTHER));
+    root.classList.toggle("native", !!isNative);
+    if (!isNative) {
+      isHovered = !!(t && t.closest(INTERACTIVE));
+      root.classList.toggle("hover", isHovered);
+    } else {
+      isHovered = false;
+      root.classList.remove("hover");
+    }
+    wakeLoop();
+  }
+
   window.addEventListener(
     "mousemove",
     function (e) {
@@ -238,178 +130,137 @@
       }
       show();
       wakeLoop();
-
-      if (hexText) {
-        const addr = (((mx & 0xfff) << 12) | (my & 0xfff)) >>> 0;
-        hexText.textContent =
-          "0x" + addr.toString(16).toUpperCase().padStart(6, "0");
-      }
-
-      // Legacy DOM trail (for glitch-trail & pixel-block cursors)
-      if (usesLegacyTrail) {
-        legacyTrail.unshift({ x: mx, y: my });
-        if (legacyTrail.length > TRAIL_LEN) legacyTrail.length = TRAIL_LEN;
-        const ghostSteps = [2, 4, 6];
-        ghosts.forEach((g, i) => {
-          const p =
-            legacyTrail[ghostSteps[i]] || legacyTrail[legacyTrail.length - 1];
-          if (p) place(g, p.x, p.y);
-        });
-        pixelDoms.forEach((g, i) => {
-          const p =
-            legacyTrail[ghostSteps[i]] || legacyTrail[legacyTrail.length - 1];
-          if (p) placePixel(g, p.x, p.y);
-        });
-      }
-
-      const t = e.target && e.target.closest ? e.target : null;
-      const isNative = t && (t.closest(NATIVE_TEXT) || t.closest(NATIVE_OTHER));
-      root.classList.toggle("native", !!isNative);
-
-      if (!isNative) {
-        const hit = t && t.closest(INTERACTIVE);
-        isHovered = !!hit;
-        root.classList.toggle("hover", isHovered);
-        if (hexText && hit) {
-          const href = hit.getAttribute && hit.getAttribute("href");
-          hexText.textContent = href
-            ? href.replace(/^#/, "")
-            : "<" + hit.tagName.toLowerCase() + ">";
-        }
-      } else {
-        isHovered = false;
-        root.classList.remove("hover");
-      }
+      applyHover(e.target);
     },
     { passive: true },
   );
 
   window.addEventListener("mousedown", function (e) {
-    if (e.button === 0) {
-      isMouseDown = true;
-      root.classList.add("down");
-      wakeLoop();
+    if (e.button !== 0) return;
+    isMouseDown = true;
+    root.classList.add("down");
+    wakeLoop();
+    // Stop the browser from starting a native drag / text-selection on press
+    const t = e.target && e.target.closest ? e.target : null;
+    if (t && !t.closest(NATIVE_TEXT) && !t.closest(NATIVE_OTHER)) {
+      if (t.closest(PRESSABLE)) e.preventDefault();
     }
   });
-
   window.addEventListener("mouseup", function () {
     isMouseDown = false;
     root.classList.remove("down");
     wakeLoop();
   });
+  window.addEventListener("blur", function () {
+    isMouseDown = false;
+    root.classList.remove("down");
+    wakeLoop();
+  });
+
+  document.addEventListener("dragstart", function (e) {
+    const t = e.target && e.target.closest ? e.target : null;
+    if (t && t.closest(NATIVE_TEXT)) return;
+    e.preventDefault();
+  });
 
   // mouseleave/mouseenter don't fire on `document`; use the root element.
-  document.documentElement.addEventListener("mouseleave", function () {
+  html.addEventListener("mouseleave", function () {
     visible = false;
     root.classList.remove("visible");
   });
-  document.documentElement.addEventListener("mouseenter", function (e) {
+  html.addEventListener("mouseenter", function (e) {
     curX = mx = e.clientX;
     curY = my = e.clientY;
     show();
     wakeLoop();
   });
 
-  if (cursorStyle === "glitch-trail" && glitchCore) {
-    setInterval(function () {
-      const jx = (Math.random() - 0.5) * 5;
-      const jy = (Math.random() - 0.5) * 5;
-      glitchCore.style.marginLeft = jx + "px";
-      glitchCore.style.marginTop = jy + "px";
-    }, 140);
+  // Keep the hover state right when content changes under a still mouse
+  let pending = 0;
+  function recheck() {
+    pending = 0;
+    if (visible) applyHover(document.elementFromPoint(mx, my));
   }
-
-  if (cursorStyle === "scope") {
-    setInterval(function () {
-      root.classList.add("flicker");
-      setTimeout(function () {
-        root.classList.remove("flicker");
-      }, 70);
-    }, 2200);
+  function schedule() {
+    if (!pending) pending = requestAnimationFrame(recheck);
   }
+  window.addEventListener("scroll", schedule, { passive: true });
+  window.addEventListener("hashchange", function () {
+    setTimeout(schedule, 120);
+    setTimeout(schedule, 700);
+  });
 
-  if (cursorStyle === "trace-ping" && traceCanvas) {
-    const pctx = traceCanvas.getContext("2d");
-    let tdpr = Math.min(2, window.devicePixelRatio || 1);
-    function resizeTrace() {
-      traceCanvas.width = window.innerWidth * tdpr;
-      traceCanvas.height = window.innerHeight * tdpr;
-      traceCanvas.style.width = window.innerWidth + "px";
-      traceCanvas.style.height = window.innerHeight + "px";
-      pctx.setTransform(tdpr, 0, 0, tdpr, 0, 0);
-    }
-    resizeTrace();
-    window.addEventListener("resize", resizeTrace, { passive: true });
+  /* ---------------- optional click diagnostic ----------------
+   * Open the site with  ?debug=cursor  and click around. A panel at the
+   * bottom shows, for the latest click: what is under the pointer, what the
+   * page changed in the next 600 ms, the cursor style the browser applies,
+   * and the click count (2+ = rapid clicking). If a stray shape appears
+   * and the panel shows nothing new, it is not coming from the page.
+   */
+  (function () {
+    let on = false;
+    try {
+      on = new URLSearchParams(window.location.search).get("debug") === "cursor";
+    } catch (e) {}
+    if (!on) return;
 
-    // Cache the theme colour instead of calling getComputedStyle every frame.
-    let accentCache = "";
-    function accentColor() {
-      if (!accentCache) {
-        accentCache =
-          getComputedStyle(document.documentElement)
-            .getPropertyValue("--text")
-            .trim() || "#fff";
-      }
-      return accentCache;
-    }
-    new MutationObserver(function () {
-      accentCache = "";
-    }).observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme"],
-    });
+    const box = document.createElement("pre");
+    box.style.cssText =
+      "position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:2147483647;" +
+      "margin:0;padding:10px 14px;max-width:min(92vw,760px);font:12px/1.5 monospace;" +
+      "background:#000;color:#0f0;border:1px solid #0f0;border-radius:8px;" +
+      "pointer-events:none;white-space:pre-wrap;opacity:.92";
+    box.textContent = "cursor debug: click something…";
+    document.body.appendChild(box);
 
-    let lastMoveAt = performance.now();
-    let pinged = false;
-    const pings = [];
+    const name = (n) => {
+      if (!n) return "(none)";
+      if (n.nodeType === 3) return "#text";
+      let s = (n.tagName || "?").toLowerCase();
+      if (n.id) s += "#" + n.id;
+      if (n.classList && n.classList.length) s += "." + [...n.classList].slice(0, 3).join(".");
+      return s;
+    };
+    let seq = 0;
     window.addEventListener(
-      "mousemove",
-      function () {
-        lastMoveAt = performance.now();
-        pinged = false;
+      "mousedown",
+      (e) => {
+        seq++;
+        const id = seq;
+        const under = document.elementsFromPoint(e.clientX, e.clientY).slice(0, 5).map(name);
+        const events = [];
+        const mo = new MutationObserver((list) => {
+          for (const m of list) {
+            if (events.length > 8) break;
+            if (m.target && m.target.closest && m.target.closest(".cc-root")) continue;
+            if (m.type === "childList") {
+              m.addedNodes.forEach((n) => events.push("+ " + name(n)));
+              m.removedNodes.forEach((n) => events.push("- " + name(n)));
+            } else if (m.type === "attributes") {
+              events.push("~ " + name(m.target) + " [" + m.attributeName + "]");
+            }
+          }
+        });
+        mo.observe(document.documentElement, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ["class", "style", "open", "hidden"],
+        });
+        const top = document.elementFromPoint(e.clientX, e.clientY);
+        const cur = top ? getComputedStyle(top).cursor.slice(0, 40) : "?";
+        setTimeout(() => {
+          mo.disconnect();
+          if (id !== seq) return;
+          box.textContent =
+            "click #" + id + "  detail(click count)=" + e.detail + "\n" +
+            "under pointer: " + under.join("  >  ") + "\n" +
+            "computed cursor: " + cur + "\n" +
+            "selection: " + JSON.stringify(String(getSelection()).slice(0, 30)) + "\n" +
+            "page changes in 600ms: " + (events.length ? events.join(" | ") : "none");
+        }, 600);
       },
-      { passive: true },
+      true,
     );
-
-    (function raf() {
-      const now = performance.now();
-      pctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-      const accent = accentColor();
-
-      if (legacyTrail.length > 1) {
-        for (let i = 0; i < legacyTrail.length - 1; i++) {
-          const a = legacyTrail[i],
-            b2 = legacyTrail[i + 1];
-          pctx.globalAlpha = Math.max(0, 0.5 - i * 0.06);
-          pctx.strokeStyle = accent;
-          pctx.lineWidth = 1;
-          pctx.beginPath();
-          pctx.moveTo(a.x, a.y);
-          pctx.lineTo(b2.x, b2.y);
-          pctx.stroke();
-        }
-      }
-
-      if (!pinged && now - lastMoveAt > 350) {
-        pinged = true;
-        pings.push({ x: mx, y: my, start: now });
-      }
-      for (let i = pings.length - 1; i >= 0; i--) {
-        const pg = pings[i];
-        const t2 = (now - pg.start) / 900;
-        if (t2 >= 1) {
-          pings.splice(i, 1);
-          continue;
-        }
-        pctx.globalAlpha = 1 - t2;
-        pctx.strokeStyle = accent;
-        pctx.lineWidth = 1;
-        pctx.beginPath();
-        pctx.arc(pg.x, pg.y, 4 + t2 * 22, 0, Math.PI * 2);
-        pctx.stroke();
-      }
-      pctx.globalAlpha = 1;
-      requestAnimationFrame(raf);
-    })();
-  }
+  })();
 })();

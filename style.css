@@ -31,12 +31,12 @@
     --sans: "JetBrains Mono", ui-monospace, monospace;
     --bg: #050505;
     --bg2: #0c0c0c;
-    --surface: #0f0f0f;
-    --text: #f2f2f2;
-    --muted: #b8b8b8;
-    --dim: #8a8a8a;
-    --border: #1c1c1c;
-    --border-strong: #2c2c2c;
+    --surface: #101010;
+    --text: #fafafa;
+    --muted: #d0d0d0;
+    --dim: #a6a6a6;
+    --border: #242424;
+    --border-strong: #3a3a3a;
     --invert: #000000;
     --hair: 1px;
     --glow: 0 0 24px rgba(255, 255, 255, 0.08);
@@ -50,14 +50,14 @@
 }
 
 :root[data-theme="light"] {
-    --bg: #fafafa;
+    --bg: #f6f6f6;
     --bg2: #ffffff;
     --surface: #ffffff;
-    --text: #0a0a0a;
-    --muted: #4a4a4a;
-    --dim: #6b6b6b;
-    --border: #e4e4e4;
-    --border-strong: #cfcfcf;
+    --text: #050505;
+    --muted: #262626;
+    --dim: #4d4d4d;
+    --border: #d8d8d8;
+    --border-strong: #b4b4b4;
     --invert: #ffffff;
     --glow: 0 0 24px rgba(0, 0, 0, 0.06);
     --glow-shadow: rgba(0, 0, 0, 0.12);
@@ -140,7 +140,7 @@ svg {
     border-radius: 50%;
     box-sizing: border-box;
     transform: translate(-50%, -50%) scale(0.2);
-    animation: rippleAnim 0.6s cubic-bezier(0.16, 0.84, 0.44, 1) forwards;
+    opacity: 0;
     pointer-events: none;
     z-index: 9999;
     border: 1.5px solid var(--text);
@@ -157,7 +157,6 @@ svg {
     height: 100%;
     z-index: -2;
     pointer-events: none;
-    opacity: 0.55;
 }
 
 #progress {
@@ -186,9 +185,7 @@ header.topnav {
     justify-content: space-between;
     padding: 7px 24px;
     min-height: 56px;
-    background: color-mix(in srgb, var(--bg2) 88%, transparent);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    background: color-mix(in srgb, var(--bg2) 96%, transparent);
     border: 1px solid var(--border-strong);
     border-top: none;
     border-bottom-left-radius: 24px;
@@ -295,7 +292,7 @@ nav.links a.active {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s var(--ease);
+    transition: color 0.3s var(--ease), background-color 0.3s var(--ease), border-color 0.3s var(--ease), box-shadow 0.3s var(--ease), transform 0.3s var(--ease), opacity 0.3s var(--ease);
     font-size: 20px;
     flex-shrink: 0;
 }
@@ -332,8 +329,6 @@ nav.links a.active {
         left: 0;
         right: 0;
         background: color-mix(in srgb, var(--bg2) 96%, transparent);
-        backdrop-filter: blur(24px) saturate(180%);
-        -webkit-backdrop-filter: blur(24px) saturate(180%);
         border: 1px solid var(--border-strong);
         border-radius: 18px;
         box-shadow:
@@ -423,6 +418,7 @@ main {
     position: fixed;
     inset: 0;
     z-index: 999;
+    pointer-events: none;
     background: var(--bg);
     display: flex;
     align-items: center;
@@ -463,17 +459,13 @@ main {
 .reveal {
     opacity: 0;
     transform: translateY(24px);
-    filter: blur(2px);
     transition:
         opacity 0.8s var(--ease),
-        transform 0.8s var(--ease),
-        filter 0.8s var(--ease);
-    will-change: transform, opacity;
+        transform 0.8s var(--ease);
 }
 .reveal.in-view {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
 }
 .reveal-left {
     opacity: 0;
@@ -534,84 +526,236 @@ h3 {
     }
 }
 
-/* ========================= 8. HOME HERO ========================= */
+/* ========================= 8. HOME ========================= */
 .hero {
-    min-height: calc(85dvh - 68px);
+    min-height: calc(100dvh - 90px);
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: clamp(20px, 4vw, 40px) 0 clamp(40px, 6vw, 80px);
+    padding: clamp(16px, 3vw, 32px) 0 clamp(36px, 5vw, 64px);
 }
 .hero-content {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
     align-items: center;
-    justify-content: space-between;
-    gap: clamp(28px, 5vw, 64px);
+    gap: clamp(28px, 5vw, 80px);
     width: 100%;
 }
 .hero-text {
-    flex: 1 1 340px;
     min-width: 0;
 }
+.hero-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 16px;
+    letter-spacing: 0.06em;
+    padding: 6px 16px 6px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    color: var(--muted);
+    margin-bottom: 22px;
+}
+.hero-status::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text);
+    animation: blink 2.4s infinite;
+}
 #glitch {
-    font-size: clamp(42px, 8.5vw, 110px);
-    line-height: 0.94;
-    letter-spacing: -0.02em;
-    margin-bottom: 16px;
+    font-size: clamp(60px, 12vw, 164px);
+    line-height: 0.9;
+    letter-spacing: -0.03em;
+    margin-bottom: 18px;
     word-break: break-word;
 }
-.hero-subtitle {
-    font-size: clamp(18px, 2.8vw, 25px);
-    color: var(--muted);
-    line-height: 1.5;
-    max-width: 540px;
-}
-.hero .meta,
-.hero .stats {
-    margin-top: 28px;
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
+.hero-role {
     font-family: var(--mono);
-    font-size: 15px;
+    font-size: clamp(24px, 3.6vw, 44px);
+    line-height: 1.2;
+    color: var(--text);
+    min-height: 1.3em;
+    margin-bottom: 18px;
+}
+.hero-role .prompt {
     color: var(--dim);
+    margin-right: 10px;
+}
+.hero-role .caret {
+    display: inline-block;
+    width: 0.5ch;
+    height: 0.95em;
+    margin-left: 4px;
+    background: var(--text);
+    vertical-align: -0.1em;
+    animation: blink 1s steps(1) infinite;
+}
+.hero-subtitle {
+    font-size: clamp(17px, 2vw, 21px);
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 560px;
 }
 .hero .cta {
-    margin-top: 36px;
+    margin-top: 34px;
     display: flex;
     gap: 14px;
     flex-wrap: wrap;
 }
-.hero-avatar {
-    flex-shrink: 0;
+.btn.solid {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
 }
-.hero-avatar-img {
-    width: clamp(160px, 22vw, 280px);
-    height: clamp(160px, 22vw, 280px);
-    border-radius: 50%;
-    border: 2px solid var(--border-strong);
-    object-fit: cover;
-    box-shadow: 0 8px 32px var(--glow-shadow);
-    display: block;
+@media (hover: hover) {
+    .btn.solid:hover {
+        background: transparent;
+        color: var(--text);
+    }
 }
 
-@media (max-width: 768px) {
+.hero-avatar {
+    justify-self: center;
+    position: relative;
+    width: clamp(240px, 32vw, 420px);
+    aspect-ratio: 1;
+}
+.hero-avatar::before,
+.hero-avatar::after {
+    content: "";
+    position: absolute;
+    border: 2px solid var(--border-strong);
+    border-radius: 50%;
+    pointer-events: none;
+}
+.hero-avatar::before {
+    inset: -16px;
+    border-style: dashed;
+    animation: spinSlow 60s linear infinite;
+    will-change: transform;
+}
+.hero-avatar::after {
+    inset: -34px;
+    border-width: 1px;
+    opacity: 0.6;
+}
+.hero-avatar-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 3px solid var(--text);
+    object-fit: cover;
+    box-shadow: 0 16px 56px var(--glow-shadow);
+    display: block;
+    position: relative;
+}
+.hero-chip {
+    position: absolute;
+    z-index: 2;
+    font-family: var(--mono);
+    font-size: 16px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--text);
+    color: var(--bg);
+    box-shadow: 0 8px 24px var(--glow-shadow);
+    white-space: nowrap;
+    animation: floaty 5s ease-in-out infinite;
+}
+.hero-chip:nth-of-type(1) { top: 6%; right: -6%; }
+.hero-chip:nth-of-type(2) { bottom: 14%; left: -10%; animation-delay: -1.7s; }
+.hero-chip:nth-of-type(3) { bottom: -2%; right: 6%; animation-delay: -3.2s; }
+@keyframes spinSlow { to { transform: rotate(360deg); } }
+@keyframes floaty { 50% { transform: translateY(-8px); } }
+
+@media (max-width: 860px) {
+    .hero {
+        min-height: 0;
+    }
     .hero-content {
-        flex-direction: column-reverse;
+        grid-template-columns: 1fr;
         text-align: center;
-        gap: 28px;
+        gap: 52px;
     }
-    .hero-avatar-img {
-        margin: 0 auto;
+    .hero-avatar {
+        order: -1;
+        width: clamp(200px, 56vw, 300px);
+        margin-top: 24px;
     }
-    .hero .stats,
-    .hero .cta {
+    .hero .cta,
+    .hero-status {
         justify-content: center;
     }
     .hero-subtitle {
         margin: 0 auto;
     }
+    .hero-chip { font-size: 14px; padding: 4px 11px; }
 }
+
+section.tight {
+    padding: clamp(28px, 4vw, 48px) 0;
+}
+.sec-eyebrow {
+    font-family: var(--mono);
+    font-size: 16px;
+    color: var(--dim);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+/* explore */
+.explore-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+    gap: 16px;
+}
+.explore {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--surface) 80%, transparent);
+    padding: 22px;
+    box-shadow: 0 8px 28px var(--glow-shadow);
+    transition: transform 0.35s var(--ease), background 0.35s var(--ease);
+}
+.explore .ex-top {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 16px;
+    color: var(--dim);
+}
+.explore h3 { font-size: 30px; font-weight: 400; }
+.explore p { font-size: 14.5px; color: var(--muted); line-height: 1.5; }
+@media (hover: hover) {
+    .explore:hover {
+        transform: translateY(-4px);
+        background: color-mix(in srgb, var(--text) 6%, var(--surface));
+    }
+    .explore:hover .card-arrow { transform: translate(3px, -3px); }
+}
+
+.empty-card {
+    border: 1.5px dashed var(--border-strong);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--dim);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 140px;
+    justify-content: center;
+}
+.empty-card b { color: var(--muted); font-weight: 400; font-size: 24px; }
 
 .pillgrid {
     display: flex;
@@ -628,7 +772,7 @@ h3 {
     border: 1px solid var(--border);
     color: var(--text);
     cursor: pointer;
-    transition: all 0.35s var(--ease);
+    transition: color 0.35s var(--ease), background-color 0.35s var(--ease), border-color 0.35s var(--ease), box-shadow 0.35s var(--ease), transform 0.35s var(--ease), opacity 0.35s var(--ease);
     letter-spacing: 0.03em;
     display: inline-flex;
     align-items: center;
@@ -795,7 +939,7 @@ h3 {
     border: var(--hair) solid var(--border-strong);
     margin-bottom: 12px;
     text-decoration: none;
-    transition: all 0.3s var(--ease);
+    transition: color 0.3s var(--ease), background-color 0.3s var(--ease), border-color 0.3s var(--ease), box-shadow 0.3s var(--ease), transform 0.3s var(--ease), opacity 0.3s var(--ease);
 }
 @media (hover: hover) {
     .sug-card:hover {
@@ -840,7 +984,7 @@ h3 {
     border-left: 2px solid transparent;
     margin-left: -17px;
     padding-left: 15px;
-    transition: all 0.25s var(--ease);
+    transition: color 0.25s var(--ease), background-color 0.25s var(--ease), border-color 0.25s var(--ease), box-shadow 0.25s var(--ease), transform 0.25s var(--ease), opacity 0.25s var(--ease);
     word-break: break-word;
 }
 .outline a.h3 {
@@ -1129,7 +1273,7 @@ h3 {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s var(--ease);
+    transition: color 0.2s var(--ease), background-color 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease), transform 0.2s var(--ease), opacity 0.2s var(--ease);
 }
 @media (hover: hover) {
     .notetree-act-btn:hover {
@@ -1147,15 +1291,13 @@ h3 {
     margin-top: auto;
     padding: 10px 8px 10px;
     border-top: 1px solid var(--border);
-    background: color-mix(in srgb, var(--surface) 80%, transparent);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
     position: sticky;
     bottom: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 11px;
+    font-size: 13px;
     color: var(--dim);
     letter-spacing: 0.08em;
     user-select: none;
@@ -1166,7 +1308,7 @@ h3 {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    font-size: 10.5px;
+    font-size: 13px;
     color: var(--muted);
 }
 .notetree-footer-badge::before {
@@ -1207,7 +1349,7 @@ h3 {
     border-radius: 2px;
     background: var(--dim);
     opacity: 0.35;
-    transition: all 0.2s var(--ease);
+    transition: color 0.2s var(--ease), background-color 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease), transform 0.2s var(--ease), opacity 0.2s var(--ease);
 }
 @media (hover: hover) {
     .notetree-resizer:hover,
@@ -1245,7 +1387,7 @@ body.resizing-sidebar * {
     gap: 7px;
     cursor: pointer;
     border-radius: 6px;
-    transition: all 0.2s var(--ease);
+    transition: color 0.2s var(--ease), background-color 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease), transform 0.2s var(--ease), opacity 0.2s var(--ease);
     user-select: none;
     text-transform: uppercase;
     font-weight: 700;
@@ -1262,7 +1404,7 @@ body.resizing-sidebar * {
     justify-content: center;
     width: 14px;
     height: 14px;
-    font-size: 10px;
+    font-size: 13px;
     transition: transform 0.2s var(--ease);
     color: var(--dim);
     flex-shrink: 0;
@@ -1280,7 +1422,7 @@ body.resizing-sidebar * {
     text-overflow: ellipsis;
 }
 .folder-badge {
-    font-size: 10.5px;
+    font-size: 13px;
     padding: 1px 6px;
     border-radius: 10px;
     background: color-mix(in srgb, var(--border) 60%, transparent);
@@ -1312,7 +1454,7 @@ body.resizing-sidebar * {
     color: var(--muted);
     cursor: pointer;
     border-radius: 6px;
-    transition: all 0.2s var(--ease);
+    transition: color 0.2s var(--ease), background-color 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease), transform 0.2s var(--ease), opacity 0.2s var(--ease);
     text-decoration: none;
     font-size: 15px;
     white-space: nowrap;
@@ -1496,7 +1638,7 @@ body:has(.noteswrap) .global-footer {
     justify-content: center;
 }
 .discord-label {
-    font-size: 11.5px;
+    font-size: 13px;
     color: var(--dim);
     font-weight: 700;
     text-transform: uppercase;
@@ -1510,7 +1652,7 @@ body:has(.noteswrap) .global-footer {
 }
 .discord-copy {
     font-family: var(--mono);
-    font-size: 11.5px;
+    font-size: 13px;
     color: var(--dim);
     text-transform: uppercase;
     padding: 4px 8px;
@@ -1711,7 +1853,7 @@ body:has(.noteswrap) .global-footer {
     height: 7px;
     border-radius: 50%;
     background: var(--dim);
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 }
 .music-widget.playing .mw-led {
     background: #22c55e;
@@ -1767,7 +1909,7 @@ body:has(.noteswrap) .global-footer {
     justify-content: center;
     color: var(--muted);
     flex-shrink: 0;
-    transition: all 0.3s var(--ease);
+    transition: color 0.3s var(--ease), background-color 0.3s var(--ease), border-color 0.3s var(--ease), box-shadow 0.3s var(--ease), transform 0.3s var(--ease), opacity 0.3s var(--ease);
 }
 .music-widget.playing .mw-art {
     color: var(--text);
@@ -1828,7 +1970,7 @@ body:has(.noteswrap) .global-footer {
     display: flex;
     justify-content: space-between;
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: 13px;
     color: var(--dim);
     margin-top: 6px;
 }
@@ -1851,7 +1993,7 @@ body:has(.noteswrap) .global-footer {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.25s var(--ease);
+    transition: color 0.25s var(--ease), background-color 0.25s var(--ease), border-color 0.25s var(--ease), box-shadow 0.25s var(--ease), transform 0.25s var(--ease), opacity 0.25s var(--ease);
 }
 @media (hover: hover) {
     .mw-btn:hover {
@@ -1883,7 +2025,7 @@ body:has(.noteswrap) .global-footer {
 }
 .mw-playlist-head {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: 13px;
     letter-spacing: 0.1em;
     color: var(--dim);
     margin-bottom: 10px;
@@ -1903,7 +2045,7 @@ body:has(.noteswrap) .global-footer {
     font-family: var(--mono);
     font-size: 13.5px;
     color: var(--muted);
-    transition: all 0.2s var(--ease);
+    transition: color 0.2s var(--ease), background-color 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease), transform 0.2s var(--ease), opacity 0.2s var(--ease);
 }
 @media (hover: hover) {
     .mw-track-item:hover {
@@ -1924,7 +2066,7 @@ body:has(.noteswrap) .global-footer {
     min-width: 0;
 }
 .mw-track-num {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--dim);
 }
 .mw-track-name {
@@ -1933,7 +2075,7 @@ body:has(.noteswrap) .global-footer {
     text-overflow: ellipsis;
 }
 .mw-track-status {
-    font-size: 11px;
+    font-size: 13px;
     color: var(--dim);
 }
 .mw-track-item.active .mw-track-status {
@@ -2025,9 +2167,7 @@ body:has(.noteswrap) .global-footer {
     overflow: hidden;
     border-radius: 20px;
     border: 1px solid transparent;
-    background: color-mix(in srgb, var(--surface) 88%, transparent);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    background: color-mix(in srgb, var(--surface) 95%, transparent);
     box-shadow: 0 4px 16px var(--glow-shadow);
     transition:
         max-width 0.35s var(--ease),
@@ -2070,7 +2210,7 @@ body:has(.noteswrap) .global-footer {
     color: var(--muted);
     flex-shrink: 0;
     cursor: pointer;
-    transition: all 0.3s var(--ease);
+    transition: color 0.3s var(--ease), background-color 0.3s var(--ease), border-color 0.3s var(--ease), box-shadow 0.3s var(--ease), transform 0.3s var(--ease), opacity 0.3s var(--ease);
 }
 .mini-player.playing .mini-art {
     color: var(--text);
@@ -2113,7 +2253,7 @@ body:has(.noteswrap) .global-footer {
     height: 4px;
     border-radius: 50%;
     background: var(--dim);
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
     flex-shrink: 0;
 }
 .mini-player.playing .mini-led {
@@ -2145,7 +2285,7 @@ body:has(.noteswrap) .global-footer {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s var(--ease);
+    transition: color 0.2s var(--ease), background-color 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease), transform 0.2s var(--ease), opacity 0.2s var(--ease);
 }
 @media (hover: hover) {
     .mini-btn:hover {
@@ -2201,7 +2341,7 @@ body:has(.noteswrap) .global-footer {
 }
 .footer-copy {
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--dim);
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -2285,7 +2425,7 @@ body:has(.noteswrap) .global-footer {
     font-size: 15px;
 }
 .palette-item .pi-tag {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--dim);
 }
 .palette-item.active,
@@ -2307,7 +2447,7 @@ body:has(.noteswrap) .global-footer {
     border-top: 1px solid var(--border);
     color: var(--dim);
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: 13px;
 }
 kbd {
     border: 1px solid var(--border-strong);
@@ -2331,7 +2471,7 @@ kbd {
     font-family: var(--mono);
     font-size: 14.5px;
     color: var(--muted);
-    transition: all 0.25s var(--ease);
+    transition: color 0.25s var(--ease), background-color 0.25s var(--ease), border-color 0.25s var(--ease), box-shadow 0.25s var(--ease), transform 0.25s var(--ease), opacity 0.25s var(--ease);
     user-select: none;
     white-space: nowrap;
 }
@@ -2380,7 +2520,7 @@ kbd {
         padding: 10px 12px;
     }
     .palette-hint {
-        font-size: 11px;
+        font-size: 13px;
         padding: 8px 12px;
     }
 }
@@ -2443,7 +2583,7 @@ kbd {
     border-radius: 20px;
     color: var(--muted);
     cursor: pointer;
-    transition: all 0.25s var(--ease);
+    transition: color 0.25s var(--ease), background-color 0.25s var(--ease), border-color 0.25s var(--ease), box-shadow 0.25s var(--ease), transform 0.25s var(--ease), opacity 0.25s var(--ease);
     background: transparent;
 }
 @media (hover: hover) {
@@ -2563,28 +2703,36 @@ kbd {
     }
 }
 
-/* ========================= 22. ANIMATED CURSOR ========================= */
-/* Real system cursor stays untouched unless JS confirms a fine pointer,
-   no reduced-motion preference, and successfully mounts the cursor DOM —
-   see js/cursor.js. Nothing here ever hides the cursor on its own. */
+/* ========================= 22. CURSOR ========================= */
+/* Native cursor -> fully transparent image cursor (more reliable than
+   `cursor: none`, which can flash the system cursor on press). */
 html.custom-cursor,
-html.custom-cursor * {
-    cursor: none !important;
+html.custom-cursor *,
+html.custom-cursor *::before,
+html.custom-cursor *::after {
+    cursor:
+        url("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")
+            0 0,
+        none !important;
 }
-html.custom-cursor .notetree-resizer,
-html.custom-cursor .notetree-resizer * {
-    cursor: col-resize !important;
-}
+/* ...except where the real cursor is the right tool */
 html.custom-cursor input,
 html.custom-cursor textarea,
 html.custom-cursor select,
 html.custom-cursor [contenteditable="true"] {
     cursor: text !important;
 }
+html.custom-cursor .notetree-resizer,
+html.custom-cursor .notetree-resizer * {
+    cursor: col-resize !important;
+}
 
 .cc-root {
     position: fixed;
-    inset: 0;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
     z-index: 10000;
     pointer-events: none;
     opacity: 0;
@@ -2595,19 +2743,6 @@ html.custom-cursor [contenteditable="true"] {
 }
 .cc-root.native {
     opacity: 0;
-}
-
-.cc-ring,
-.cc-block,
-.cc-glitch-core,
-.cc-ghost,
-.cc-pixel-core,
-.cc-pixel,
-.cc-hex-dot,
-.cc-hex-tag,
-.cc-scope-dot,
-.cc-trace-dot {
-    z-index: 2;
 }
 
 /* ---- bold kinetic ring cursor ---- */
@@ -2640,127 +2775,6 @@ html.custom-cursor [contenteditable="true"] {
     background: color-mix(in srgb, var(--text) 20%, transparent);
 }
 
-/* ---- terminal-block: blinking monospace caret ---- */
-.cc-block {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 12px;
-    height: 20px;
-    margin: -4px 0 0 4px;
-    background: var(--text);
-    mix-blend-mode: difference;
-    animation: ccBlink 1.1s steps(1, end) infinite;
-    transition:
-        width 0.15s var(--ease),
-        height 0.15s var(--ease),
-        transform 0.04s linear;
-}
-.cc-root.hover .cc-block {
-    width: 20px;
-    height: 26px;
-    margin: -7px 0 0 4px;
-}
-.cc-root.down .cc-block {
-    animation: none;
-    opacity: 0.5;
-}
-
-@keyframes ccBlink {
-    0%,
-    49% {
-        opacity: 1;
-    }
-    50%,
-    100% {
-        opacity: 0;
-    }
-}
-
-/* ---- glitch-trail: grayscale ghost copies + jitter, no color split
-   (color would break the site's strict black-and-white palette) ---- */
-.cc-glitch-core {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 9px;
-    height: 9px;
-    margin: -4px 0 0 -4px;
-    background: var(--text);
-    transition: margin 0.05s linear;
-}
-.cc-ghost {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 9px;
-    height: 9px;
-    margin: -4px 0 0 -4px;
-    background: var(--text);
-    mix-blend-mode: difference;
-}
-.cc-ghost-1 {
-    opacity: 0.45;
-}
-.cc-ghost-2 {
-    opacity: 0.25;
-}
-.cc-ghost-3 {
-    opacity: 0.12;
-}
-.cc-root.hover .cc-glitch-core,
-.cc-root.hover .cc-ghost {
-    width: 4px;
-    height: 4px;
-    margin: -2px 0 0 -2px;
-    border-radius: 0;
-    background: var(--text);
-}
-.cc-root.hover .cc-glitch-core {
-    box-shadow: 0 0 0 10px color-mix(in srgb, var(--text) 6%, transparent);
-}
-.cc-root.down .cc-glitch-core {
-    width: 14px;
-    height: 14px;
-    margin: -7px 0 0 -7px;
-}
-
-/* ---- pixel-block: chunky 8-bit square on a grid, fading pixel trail,
-   echoes the pixelated cloud/rain canvas already on the page ---- */
-.cc-pixel-core,
-.cc-pixel {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 8px;
-    height: 8px;
-    margin: 0 0 0 0;
-    background: var(--text);
-    image-rendering: pixelated;
-    transition:
-        width 0.15s steps(2),
-        height 0.15s steps(2);
-}
-.cc-pixel-1 {
-    opacity: 0.5;
-}
-.cc-pixel-2 {
-    opacity: 0.28;
-}
-.cc-pixel-3 {
-    opacity: 0.12;
-}
-.cc-root.hover .cc-pixel-core {
-    width: 14px;
-    height: 14px;
-}
-.cc-root.down .cc-pixel-core {
-    width: 6px;
-    height: 6px;
-    background: var(--bg);
-    box-shadow: 0 0 0 2px var(--text) inset;
-}
-
 @media (prefers-reduced-motion: reduce) {
     .cc-root {
         display: none !important;
@@ -2777,142 +2791,473 @@ html.custom-cursor [contenteditable="true"] {
     outline-offset: 6px;
 }
 
-/* ---- hex-addr: live coordinate readout, like a memory viewer / debugger
-   overlay — swaps to the element's tag or href on hover ---- */
-.cc-hex-dot {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 4px;
-    height: 4px;
-    margin: -2px 0 0 -2px;
-    background: var(--text);
-    border-radius: 50%;
+/* Clickable things: no accidental drag-ghost / text-selection on press. */
+a,
+button,
+[role="button"],
+.card,
+.explore,
+.tile,
+.social-tile,
+.chip,
+.theme-switch {
+    -webkit-user-drag: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
-.cc-hex-tag {
-    position: fixed;
-    left: 0;
-    top: 0;
-    transform-origin: 0 0;
-    margin: 14px 0 0 16px;
-    padding: 2px 6px;
-    border: 1px solid var(--text);
-    background: var(--bg);
-    white-space: nowrap;
-}
-.cc-hex-text {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.04em;
+
+/* ========================= 23. THEME SWITCH ========================= */
+.theme-switch {
+    position: relative;
+    width: 68px;
+    height: 36px;
+    flex-shrink: 0;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    background: color-mix(in srgb, var(--surface) 85%, transparent);
+    box-shadow: 0 4px 14px var(--glow-shadow);
     color: var(--text);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        border-color 0.3s var(--ease),
+        background 0.3s var(--ease);
 }
-.cc-root.hover .cc-hex-tag {
+@media (hover: hover) {
+    .theme-switch:hover {
+        border-color: var(--text);
+    }
+}
+.theme-switch:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 3px;
+}
+.theme-switch .ts-bg {
+    position: absolute;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    color: var(--dim);
+    display: flex;
+}
+.theme-switch .ts-bg-sun { left: 9px; }
+.theme-switch .ts-bg-moon { right: 9px; }
+.theme-switch .ts-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
     background: var(--text);
-}
-.cc-root.hover .cc-hex-text {
     color: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px var(--glow-shadow);
+    transition: transform 0.45s var(--ease);
 }
-.cc-root.down .cc-hex-dot {
-    width: 7px;
-    height: 7px;
-    margin: -3.5px 0 0 -3.5px;
+:root[data-theme="dark"] .theme-switch .ts-knob {
+    transform: translateX(32px);
 }
-
-/* ---- scope: crosshair guide-lines to the viewport edges, with an
-   occasional flicker like a scanner losing and regaining lock ---- */
-.cc-scope-h,
-.cc-scope-v {
-    position: fixed;
-    background: var(--text);
-    opacity: 0.16;
-    transition: opacity 0.2s var(--ease);
-}
-.cc-scope-h {
-    left: 0;
-    right: 0;
-    height: 1px;
-}
-.cc-scope-v {
-    top: 0;
-    bottom: 0;
-    width: 1px;
-}
-.cc-scope-dot {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 8px;
-    height: 8px;
-    margin: -4px 0 0 -4px;
-    border: 1px solid var(--text);
-    border-radius: 50%;
+.theme-switch .ts-ic {
+    position: absolute;
+    display: flex;
     transition:
-        width 0.2s var(--ease),
-        height 0.2s var(--ease),
-        margin 0.2s var(--ease),
-        background 0.2s var(--ease);
+        opacity 0.3s var(--ease),
+        transform 0.45s var(--ease);
 }
-.cc-scope-tick {
-    position: fixed;
-    width: 10px;
-    height: 10px;
-    border-color: var(--text);
-    border-style: solid;
+:root[data-theme="light"] .theme-switch .ts-moon,
+:root[data-theme="dark"] .theme-switch .ts-sun {
     opacity: 0;
-    transition: opacity 0.2s var(--ease);
+    transform: rotate(-90deg) scale(0.4);
 }
-.cc-scope-tl {
-    top: 12px;
-    left: 12px;
-    border-width: 1px 0 0 1px;
+:root[data-theme="light"] .theme-switch .ts-sun,
+:root[data-theme="dark"] .theme-switch .ts-moon {
+    opacity: 1;
+    transform: none;
 }
-.cc-scope-tr {
-    top: 12px;
-    right: 12px;
-    border-width: 1px 1px 0 0;
+/* the circular reveal replaces the default cross-fade */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
 }
-.cc-root.hover .cc-scope-h,
-.cc-root.hover .cc-scope-v {
-    opacity: 0.4;
-}
-.cc-root.hover .cc-scope-dot {
-    background: var(--text);
-    width: 5px;
-    height: 5px;
-    margin: -2.5px 0 0 -2.5px;
-}
-.cc-root.hover .cc-scope-tick {
-    opacity: 0.5;
-}
-.cc-root.flicker .cc-scope-h,
-.cc-root.flicker .cc-scope-v {
-    opacity: 0.55;
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) { z-index: 2; }
+
+@media (max-width: 640px) {
+    .theme-switch { width: 60px; height: 32px; }
+    .theme-switch .ts-knob { width: 24px; height: 24px; }
+    :root[data-theme="dark"] .theme-switch .ts-knob { transform: translateX(28px); }
+    .theme-switch .ts-bg-sun { left: 8px; }
+    .theme-switch .ts-bg-moon { right: 8px; }
 }
 
-/* ---- trace-ping: fading path through recent movement + a sonar-style
-   ping ring when the pointer pauses ---- */
-.cc-trace-canvas {
-    position: fixed;
-    inset: 0;
+/* ========================= 24. SOCIAL TILES ========================= */
+.social-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+.social-tile {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 18px;
+    min-height: 84px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--surface) 85%, transparent);
+    box-shadow: 0 6px 22px var(--glow-shadow);
+    color: var(--text);
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
     width: 100%;
-    height: 100%;
-}
-.cc-trace-dot {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 5px;
-    height: 5px;
-    margin: -2.5px 0 0 -2.5px;
-    background: var(--text);
-    border-radius: 50%;
     transition:
-        width 0.2s var(--ease),
-        height 0.2s var(--ease),
-        margin 0.2s var(--ease);
+        transform 0.3s var(--ease),
+        background 0.3s var(--ease),
+        border-color 0.3s var(--ease),
+        color 0.3s var(--ease);
 }
-.cc-root.hover .cc-trace-dot {
-    width: 9px;
-    height: 9px;
-    margin: -4.5px 0 0 -4.5px;
+.social-tile.wide {
+    grid-column: 1 / -1;
+}
+.social-ic {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    border: 1px solid var(--border-strong);
+    background: color-mix(in srgb, var(--text) 6%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s var(--ease), color 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+.social-ic svg { width: 24px; height: 24px; display: block; }
+.social-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+    line-height: 1.25;
+}
+.social-label {
+    font-family: var(--mono);
+    font-size: 15px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dim);
+}
+.social-handle {
+    font-family: var(--sans);
+    font-size: 15.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.social-go {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--dim);
+    flex-shrink: 0;
+    transition: transform 0.3s var(--ease), color 0.3s var(--ease);
+}
+@media (hover: hover) {
+    .social-tile:hover {
+        transform: translateY(-3px);
+        border-color: var(--text);
+        background: var(--text);
+        color: var(--bg);
+    }
+    .social-tile:hover .social-label,
+    .social-tile:hover .social-go { color: color-mix(in srgb, var(--bg) 70%, transparent); }
+    .social-tile:hover .social-ic {
+        background: var(--bg);
+        color: var(--text);
+        border-color: var(--bg);
+    }
+    .social-tile:hover .social-go { transform: translate(3px, -3px); }
+}
+.social-tile:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 3px;
+}
+.social-tile.copied .social-go { color: var(--text); }
+@media (max-width: 520px) {
+    .social-grid { grid-template-columns: 1fr; }
+}
+
+.about-block { margin-top: 44px; }
+.about-block:first-child { margin-top: 0; }
+.about-bio { font-size: 18px; color: var(--muted); }
+.pill { font-size: 15px; padding: 4px 12px; }
+.empty-music {
+    border: 1.5px dashed var(--border-strong);
+    border-radius: var(--radius);
+    padding: 22px;
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--dim);
+    line-height: 1.4;
+}
+
+/* ========================= 26. TOUCH & MOBILE POLISH ========================= */
+/* 1. Kill the default blue/grey tap-highlight box everywhere. */
+*,
+*::before,
+*::after {
+    -webkit-tap-highlight-color: transparent;
+}
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+img {
+    -webkit-touch-callout: none;
+}
+
+/* 2. Instant taps: no 300 ms delay, no double-tap-zoom on controls. */
+a,
+button,
+[role="button"],
+[role="switch"],
+.card,
+.explore,
+.tile,
+.social-tile,
+.chip,
+.notenode,
+.folder,
+.palette-item,
+summary,
+label {
+    touch-action: manipulation;
+}
+
+/* 3. No focus box after a mouse/touch tap, but keep a clear ring for keyboard. */
+:focus:not(:focus-visible) {
+    outline: none;
+}
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[role="switch"]:focus-visible,
+.card:focus-visible,
+.explore:focus-visible,
+.chip:focus-visible,
+.notenode:focus-visible,
+.folder:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 3px;
+}
+
+/* 4. Don't let a long-press select or "callout" UI chrome. */
+header.topnav,
+nav.links,
+.ibtn,
+.burger,
+.btn,
+.mw-btn,
+.mini-btn,
+.notenode,
+.folder,
+.palette-item,
+.pill,
+.stat,
+.hero-chip,
+.bottom-left-controls,
+.btt-btn {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+/* 5. Touch screens: real pressed-state feedback instead of the browser box. */
+@media (hover: none) {
+    .btn,
+    .card,
+    .explore,
+    .tile,
+    .social-tile,
+    .chip,
+    .ibtn,
+    .burger,
+    .mw-btn,
+    .mini-btn,
+    .btt-btn,
+    .theme-switch,
+    .sug-card {
+        transition:
+            transform 0.15s var(--ease),
+            background 0.15s var(--ease),
+            border-color 0.15s var(--ease),
+            color 0.15s var(--ease),
+            opacity 0.15s var(--ease);
+    }
+    .btn:active,
+    .card:active,
+    .explore:active,
+    .tile:active,
+    .social-tile:active,
+    .chip:active,
+    .ibtn:active,
+    .burger:active,
+    .mw-btn:active,
+    .mini-btn:active,
+    .sug-card:active {
+        transform: scale(0.96);
+        background: color-mix(in srgb, var(--text) 12%, var(--surface));
+    }
+    .btn.solid:active {
+        background: color-mix(in srgb, var(--text) 82%, var(--bg));
+        color: var(--bg);
+    }
+    .btt-btn:active {
+        transform: scale(0.9);
+    }
+    .btt-btn.pointing-down:active {
+        transform: rotate(180deg) scale(0.9);
+    }
+    .theme-switch:active .ts-knob {
+        width: 34px;
+    }
+    nav.links a:active,
+    .palette-item:active,
+    .notenode:active,
+    .folder:active {
+        background: color-mix(in srgb, var(--text) 12%, transparent);
+    }
+    /* hover styles must never "stick" after a tap */
+    nav.links a:hover:not(.active)::after {
+        transform: scaleX(0);
+    }
+    nav.links a:hover:not(.active) {
+        color: var(--muted);
+    }
+    .outline a:hover:not(.active) {
+        color: var(--muted);
+    }
+    .code-copy:hover:not(.copied) {
+        color: inherit;
+        border-color: var(--border-strong);
+    }
+    .ripple {
+        display: none;
+    }
+}
+
+/* 6. Comfortable hit areas (>= 44 px) on touch devices. */
+@media (pointer: coarse) {
+    .burger {
+        width: 44px;
+        height: 44px;
+    }
+    .ibtn {
+        width: 46px;
+        height: 46px;
+    }
+    .chip {
+        min-height: 40px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+    .mini-btn,
+    .mw-btn {
+        min-width: 40px;
+        min-height: 40px;
+    }
+    .theme-switch::after {
+        content: "";
+        position: absolute;
+        inset: -8px;
+    }
+    .code-copy {
+        min-height: 34px;
+        padding: 6px 12px;
+    }
+    .palette-item {
+        min-height: 48px;
+    }
+    nav.links a {
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+    }
+}
+
+/* 7. Phones & notches. */
+body {
+    overscroll-behavior-x: none;
+}
+@media (max-width: 768px) {
+    .wrap {
+        padding-left: max(16px, env(safe-area-inset-left, 0px));
+        padding-right: max(16px, env(safe-area-inset-right, 0px));
+    }
+}
+@media (max-width: 640px) {
+    /* keep the fixed corner buttons from covering the footer text */
+    .global-footer {
+        padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    }
+    .hero-chip:nth-of-type(1) {
+        right: -2%;
+    }
+    .hero-chip:nth-of-type(2) {
+        left: -4%;
+    }
+    #palette input {
+        font-size: 16px; /* >=16px stops iOS zooming the page on focus */
+    }
+}
+
+/* Mobile browsers: 100vh includes the hidden address bar, use dynamic units. */
+@supports (height: 100dvh) {
+    main {
+        min-height: 100dvh;
+    }
+    .noteswrap {
+        min-height: 100dvh;
+    }
+    .notetree,
+    .notetree-resizer {
+        height: 100dvh;
+    }
+}
+
+/* Short landscape phones: stack controls tighter. */
+@media (max-height: 460px) and (orientation: landscape) {
+    .bottom-left-controls {
+        flex-direction: row;
+    }
+    .hero {
+        min-height: 0;
+    }
+}
+
+
+/* ========================= 27. PERFORMANCE ========================= */
+/* never run the decorative infinite animations while the tab is idle/hidden */
+@media (prefers-reduced-motion: reduce) {
+    .hero-avatar::before,
+    .hero-chip {
+        animation: none !important;
+    }
+}
+
+/* video internals live in a shadow tree that `*` can't reach */
+html.custom-cursor video,
+html.custom-cursor video::-webkit-media-controls {
+    cursor:
+        url("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")
+            0 0,
+        none !important;
+    pointer-events: none;
 }

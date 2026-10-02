@@ -119,15 +119,15 @@ content/
 
 ### Manual Edits
 
-- **`config.js`** — page titles/subtitles, footer text, and nav labels. About page contact cards are in `js/app.js` (`ABOUT.contacts`).
+- **`config.js`** — **all text on the site, grouped per page** (`site`, `routes`, `nav`, `ui`, `footer`, `pages.home`, `pages.writeups`, `pages.projects`, `pages.post`, `pages.notes`, `pages.timeline`, `pages.about`, `pages.notFound`, `music`, `cursor`). Rename any page's URL slug under `routes`, edit nav labels, tab titles (`site.titleTemplate`), hero text, button labels, empty-state messages, timeline entries, about bio/skills/social links, music labels and the playlist — without touching any other file. Placeholders: `{year}`, `{site}`, `{page}`, `{n}`, `{query}`.
 - **`data.js`** — auto-generated from `content/` via `manage.js sync` (can also be edited directly).
-- **`js/app.js`** — core SPA router, view templates, markdown parser, timeline entries, and about bio/skills/contacts (`const TIMELINE` / `const ABOUT`).
-- **`js/player.js`** — playlist tracks, audio playback simulation, and UI sync.
+- **`js/app.js`** — core SPA router, view templates and markdown parser. It contains no site text: every string is read from `config.js`.
+- **`js/player.js`** — audio playback simulation and UI sync (the playlist and its labels are in `config.js` → `music`).
 - **`js/canvas.js`** — rain particle density, cloud simulation, and storm parameters.
 - **`js/cmdk.js`** — command palette search indexing and shortcuts.
 - **`style.css`** — theme tokens, island navbar, typography, notes vault layout, and animations.
 - Swap `media/pfp.jpg`, `media/top_dark.webp` / `media/top_light.webp` (back-to-top icons per theme), and `media/loader.mp4` (route-change loading clip) for your own assets — keep the same filenames or update their references in `index.html` and `js/app.js`.
-- **Kinetic Cursor** — `js/cursor.js` draws an animated cursor with smooth inertia. Set `CONFIG.cursor` in `config.js` to `"ring"` (default), `"terminal-block"`, `"pixel-block"`, `"hex-addr"`, `"scope"`, `"glitch-trail"`, `"trace-ping"`, or `"off"`. Preview with `?cursor=<name>` in the URL. It sleeps when stationary and disables on touch devices or when `prefers-reduced-motion` is active.
+- **Kinetic Cursor** — `js/cursor.js` draws a ring cursor with smooth inertia that grows over clickable things and squeezes on press. Set `cursor` in `config.js` to `"on"` (default) or `"off"` for the normal system cursor; `?cursor=off` in the URL also works. Add `?debug=cursor` to see a click diagnostic panel. It disables on touch devices or when `prefers-reduced-motion` is active.
 
 ## Performance Optimizations
 
@@ -148,7 +148,7 @@ js/
 ├── player.js    — persistent audio player & bidirectional sync
 ├── canvas.js    — rain, lightning & procedural cloud canvas animation
 └── cmdk.js      — ⌘K command palette & global fuzzy search indexer
-config.js        — site copy and navigation config
+config.js        — ALL site text, titles, URL slugs, nav, about/timeline content, music labels
 data.js          — writeups, projects, notes content
 marked.min.js    — self-hosted fast markdown parser
 js/cursor.js     — bold kinetic ring cursor with hover expansion
@@ -159,3 +159,26 @@ media/top_dark.webp / top_light.webp (and .png) — back-to-top icon per theme
 robots.txt       — search engine crawling policy and bot filters
 .well-known/security.txt — RFC 9116 security contact policy (edit the placeholder contact/domain before deploying)
 ```
+
+
+## Customising the site (config.js)
+
+Everything visible is controlled from `config.js`, one block per page so pages never share text:
+
+| Want to change…                         | Edit                                            |
+| --------------------------------------- | ----------------------------------------------- |
+| Name in navbar / tab titles             | `site.brand`, `site.name`, `site.titleTemplate` |
+| A page's URL (e.g. `/me` → `/about`)    | `routes.about` (old links via `routes.redirects`) |
+| Nav links and labels                    | `nav.links`                                     |
+| Home hero, buttons, explore cards       | `pages.home`                                    |
+| Writeups / Projects heading & messages  | `pages.writeups`, `pages.projects`              |
+| "Back to…", read time, suggested reads  | `pages.post`, `pages.writeups.backLabel`        |
+| Notes vault labels and icons            | `pages.notes`                                   |
+| Timeline entries                        | `pages.timeline.items`                          |
+| About bio, interests, social tiles      | `pages.about` (`contacts`: `icon`, `handle`, `copy`) |
+| 404 page                                | `pages.notFound`                                |
+| Search palette, loader, theme/rain tips | `ui`                                            |
+| Footer lines                            | `footer`                                        |
+| Music labels + playlist                 | `music`                                         |
+
+> `404.html` is a tiny standalone redirect page and cannot load `config.js`. If you rename a slug in `routes`, add the new slug to the `routeNames` list at the top of `404.html` too.
