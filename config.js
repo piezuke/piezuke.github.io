@@ -128,7 +128,7 @@ const CONFIG = {
           "Music composition",
         ],
         subtitle:
-          "CS student who likes making binaries misbehave. CTF writeups, projects and half-organised notes live here.",
+          "CTF writeups, projects and half-organised notes live here. Beware of the ones whose names shall not be uttered",
         chips: [], // floating badges around the avatar (max 3)
       },
       // style: "solid" | "outline" | "ghost".  Use `page` or `url`.

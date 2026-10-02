@@ -10,7 +10,10 @@
             http-equiv="Content-Security-Policy"
             content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
         />
-        <meta name="format-detection" content="telephone=no, email=no, address=no" />
+        <meta
+            name="format-detection"
+            content="telephone=no, email=no, address=no"
+        />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="referrer" content="strict-origin-when-cross-origin" />
         <meta name="theme-color" content="#050505" />
@@ -45,6 +48,14 @@
             } catch (e) {}
         </script>
         <title>pieBlog</title>
+        <meta
+            name="google-site-verification"
+            content="CVrKIcMRcnF7B9URy3kxmeR67QlqD2BEN9DEisY5zEs"
+        />
+        <meta
+            name="description"
+            content="CTF writeups, projects, notes, etc..."
+        />
         <meta
             name="description"
             content="CTF writeups, projects, notes, etc..."
@@ -92,11 +103,23 @@
                 ></video>
             </div>
             <div class="loadbarwrap"><div class="loadbar"></div></div>
-            <div class="loadertext" id="loaderlabel" data-cfg="ui.loader.initial">CONNECTING...</div>
+            <div
+                class="loadertext"
+                id="loaderlabel"
+                data-cfg="ui.loader.initial"
+            >
+                CONNECTING...
+            </div>
         </div>
 
         <header class="topnav">
-            <a href="#/" class="brand" aria-label="Home" data-cfg-href="home" data-cfg-attr="aria-label:nav.homeLabel">
+            <a
+                href="#/"
+                class="brand"
+                aria-label="Home"
+                data-cfg-href="home"
+                data-cfg-attr="aria-label:nav.homeLabel"
+            >
                 <span id="cfg-brand">PIE</span>
             </a>
             <nav class="links" id="navlinks"></nav>
@@ -110,8 +133,12 @@
                     data-cfg-attr="title:ui.search.buttonTitle;aria-label:ui.search.buttonLabel"
                 >
                     <span
-                        ><span class="cmdk-key" data-cfg="ui.search.key">⌘</span>
-                        <span class="cmdk-text" data-cfg="ui.search.buttonText">search everything</span></span
+                        ><span class="cmdk-key" data-cfg="ui.search.key"
+                            >⌘</span
+                        >
+                        <span class="cmdk-text" data-cfg="ui.search.buttonText"
+                            >search everything</span
+                        ></span
                     >
                 </div>
                 <div
@@ -149,12 +176,19 @@
                             data-cfg-href="about"
                             data-cfg-attr="title:ui.miniPlayer.linkTitle"
                         >
-                            <div class="mini-title" id="mini-title" data-cfg="ui.miniPlayer.idleTitle">
+                            <div
+                                class="mini-title"
+                                id="mini-title"
+                                data-cfg="ui.miniPlayer.idleTitle"
+                            >
                                 Track 01
                             </div>
                             <div class="mini-meta">
                                 <span class="mini-led"></span>
-                                <span class="mini-status" id="mini-status" data-cfg="music.status.idle"
+                                <span
+                                    class="mini-status"
+                                    id="mini-status"
+                                    data-cfg="music.status.idle"
                                     >IDLE</span
                                 >
                             </div>
@@ -276,7 +310,12 @@
         </button>
 
         <div id="palette-overlay">
-            <div id="palette" role="dialog" aria-label="Command palette" data-cfg-attr="aria-label:ui.search.dialogLabel">
+            <div
+                id="palette"
+                role="dialog"
+                aria-label="Command palette"
+                data-cfg-attr="aria-label:ui.search.dialogLabel"
+            >
                 <input
                     id="palette-input"
                     type="text"
@@ -287,8 +326,15 @@
                 />
                 <div id="palette-results"></div>
                 <div class="palette-hint">
-                    <span><kbd>↑↓</kbd> <span data-cfg="ui.search.hintNavigate">navigate</span> &nbsp; <kbd>↵</kbd> <span data-cfg="ui.search.hintOpen">open</span></span
-                    ><span><kbd>esc</kbd> <span data-cfg="ui.search.hintClose">close</span></span>
+                    <span
+                        ><kbd>↑↓</kbd>
+                        <span data-cfg="ui.search.hintNavigate">navigate</span>
+                        &nbsp; <kbd>↵</kbd>
+                        <span data-cfg="ui.search.hintOpen">open</span></span
+                    ><span
+                        ><kbd>esc</kbd>
+                        <span data-cfg="ui.search.hintClose">close</span></span
+                    >
                 </div>
             </div>
         </div>
