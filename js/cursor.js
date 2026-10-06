@@ -1,209 +1,254 @@
 /**
- * piezuke_ — kinetic ring cursor
- * The original ring: eased follow, grows over clickable things, squeezes on press.
+ * ===================================================================
+ * piezuke_ — ring cursor  (rebuilt from scratch)
+ * ===================================================================
+ * Looks and feels like the original: a bold ring that trails the mouse with
+ * a little inertia, swells over anything clickable and squeezes on press.
  *
- * Click-bug hardening (the stray "+" some browsers drew on press):
- *  - the native cursor is replaced by a transparent image cursor in CSS
- *    (more reliable than `cursor: none`, which can flash the system cursor)
- *  - pressing a link/button never starts a native drag or text selection
- *    (the OS paints its own cursor, with a "+" / link badge, during those)
- *  - the click ripple is skipped while this cursor is active
- * Disable with CONFIG.cursor = "off" or ?cursor=off.
+ * Modes  (config.js -> cursor, or ?cursor=… in the address bar to test):
+ *   "ring"         the ring above, drawn by the page (default)
+ *   "native-ring"  the same ring drawn AS the operating-system cursor.
+ *                  Nothing is hidden and nothing is faked, so there is no
+ *                  "hidden cursor" that could ever flash back on a click.
+ *                  (No trailing inertia — the OS draws it.)
+ *   "off"          the normal system cursor
+ *
+ * Design rules that keep clicks clean:
+ *   - ONE element, ONE transform. No wrapper layers, nothing is added to or
+ *     removed from the page on click.
+ *   - Pressing a link/button never starts a native drag or text selection
+ *     (that is when some systems paint their own cursor with a "+" badge).
+ *   - Only a real mouse or pen drives it. Touch screens never see it.
+ *   - Skipped entirely under prefers-reduced-motion.
  */
 (function () {
-  const mq = (q) =>
-    typeof window.matchMedia === "function" ? window.matchMedia(q) : null;
-  const fine = mq("(hover: hover) and (pointer: fine)");
-  const reduced = mq("(prefers-reduced-motion: reduce)");
+  "use strict";
+
+  /* ---------------------------- environment ---------------------------- */
+  const html = document.documentElement;
+  const mm = (q) => (typeof window.matchMedia === "function" ? window.matchMedia(q) : null);
+  const fine = mm("(hover: hover) and (pointer: fine)");
+  const reduced = mm("(prefers-reduced-motion: reduce)");
   if (!fine || !fine.matches || (reduced && reduced.matches)) return;
 
-  try {
-    const q = new URLSearchParams(window.location.search).get("cursor");
-    if (q && q.toLowerCase() === "off") return;
-  } catch (e) {}
-  if (
-    typeof CONFIG !== "undefined" &&
-    CONFIG.cursor &&
-    String(CONFIG.cursor).toLowerCase() === "off"
-  )
-    return;
+  function getMode() {
+    let m = "";
+    try {
+      m = (new URLSearchParams(window.location.search).get("cursor") || "").toLowerCase();
+    } catch (e) {}
+    if (!m && typeof CONFIG !== "undefined" && CONFIG.cursor) m = String(CONFIG.cursor).toLowerCase();
+    if (m === "off" || m === "system" || m === "native") return "off";
+    if (m === "native-ring" || m === "os") return "native-ring";
+    return "ring"; // "ring", "on", or anything else
+  }
+  const mode = getMode();
+  if (mode === "off") return;
 
-  const INTERACTIVE =
-    'a, button, [role="button"], [role="switch"], [onclick], .chip, .pill, .card, ' +
-    ".notenode, .folder, .contact-card, .mw-btn, .mini-btn, .code-copy, label, summary";
+  /* ------------------------------ selectors ----------------------------- */
+  const CLICKABLE =
+    'a, button, [role="button"], [role="switch"], [onclick], summary, label, ' +
+    ".chip, .pill, .card, .explore, .tile, .social-tile, .notenode, .folder, " +
+    ".contact-card, .code-copy, .mw-btn, .mini-btn, .palette-item, .ibtn, .burger, .btt-btn";
   const PRESSABLE =
-    'a, button, [role="button"], [role="switch"], [onclick], .chip, .card, ' +
-    ".notenode, .folder, .mw-btn, .mini-btn, .code-copy, summary";
-  const NATIVE_TEXT = 'input, textarea, select, [contenteditable="true"]';
-  const NATIVE_OTHER = ".notetree-resizer";
+    'a, button, [role="button"], [role="switch"], [onclick], summary, ' +
+    ".chip, .card, .explore, .tile, .social-tile, .notenode, .folder, " +
+    ".code-copy, .mw-btn, .mini-btn, .palette-item, .ibtn, .burger, .btt-btn";
+  const TEXT_FIELD = 'input, textarea, select, [contenteditable="true"]';
+  const OWN_CURSOR = ".notetree-resizer"; // keeps the browser's resize cursor
+  const el = (t) => (t && t.closest ? t : null);
 
-  const html = document.documentElement;
-  html.classList.add("custom-cursor");
-
-  const root = document.createElement("div");
-  root.className = "cc-root";
-  root.setAttribute("aria-hidden", "true");
-  root.innerHTML = '<div class="cc-ring"></div>';
-  document.body.appendChild(root);
-  const ring = root.querySelector(".cc-ring");
-
-  let mx = window.innerWidth / 2,
-    my = window.innerHeight / 2;
-  let curX = mx,
-    curY = my;
-  let currentScale = 1.0;
-  let isHovered = false;
-  let isMouseDown = false;
-  let visible = false;
-  let isLoopRunning = false;
-  let firstMove = true;
-
-  function show() {
-    if (!visible) {
-      visible = true;
-      root.classList.add("visible");
-    }
-  }
-  function draw() {
-    ring.style.transform =
-      "translate3d(" +
-      curX +
-      "px, " +
-      curY +
-      "px, 0) scale(" +
-      currentScale.toFixed(3) +
-      ")";
-  }
-  function wakeLoop() {
-    if (!isLoopRunning) {
-      isLoopRunning = true;
-      requestAnimationFrame(mainLoop);
-    }
-  }
-  function mainLoop() {
-    // silky kinetic follow (pure inertia, no distortion)
-    const ease = 0.22;
-    curX += (mx - curX) * ease;
-    curY += (my - curY) * ease;
-
-    // expand on hover, compress on click
-    const targetScale = isHovered ? 1.75 : 1.0;
-    const clickFactor = isMouseDown ? 0.85 : 1.0;
-    currentScale += (targetScale * clickFactor - currentScale) * 0.18;
-    draw();
-
-    const dist = Math.hypot(mx - curX, my - curY);
-    const scaling = Math.abs(currentScale - targetScale * clickFactor) > 0.005;
-    if (dist > 0.1 || scaling) {
-      requestAnimationFrame(mainLoop);
-    } else {
-      isLoopRunning = false;
-      curX = mx;
-      curY = my;
-      draw();
-    }
-  }
-
-  function applyHover(el) {
-    const t = el && el.closest ? el : null;
-    const isNative = t && (t.closest(NATIVE_TEXT) || t.closest(NATIVE_OTHER));
-    root.classList.toggle("native", !!isNative);
-    if (!isNative) {
-      isHovered = !!(t && t.closest(INTERACTIVE));
-      root.classList.toggle("hover", isHovered);
-    } else {
-      isHovered = false;
-      root.classList.remove("hover");
-    }
-    wakeLoop();
-  }
-
-  window.addEventListener(
-    "mousemove",
-    function (e) {
-      mx = e.clientX;
-      my = e.clientY;
-      if (firstMove) {
-        firstMove = false;
-        curX = mx;
-        curY = my;
-      }
-      show();
-      wakeLoop();
-      applyHover(e.target);
-    },
-    { passive: true },
-  );
-
-  window.addEventListener("mousedown", function (e) {
+  /* ---------------- press guards (both modes) ---------------- */
+  document.addEventListener("mousedown", (e) => {
     if (e.button !== 0) return;
-    isMouseDown = true;
-    root.classList.add("down");
-    wakeLoop();
-    // Stop the browser from starting a native drag / text-selection on press
-    const t = e.target && e.target.closest ? e.target : null;
-    if (t && !t.closest(NATIVE_TEXT) && !t.closest(NATIVE_OTHER)) {
-      if (t.closest(PRESSABLE)) e.preventDefault();
-    }
+    const t = el(e.target);
+    if (!t || t.closest(TEXT_FIELD) || t.closest(OWN_CURSOR)) return;
+    if (t.closest(PRESSABLE)) e.preventDefault(); // no drag / selection starts here
   });
-  window.addEventListener("mouseup", function () {
-    isMouseDown = false;
-    root.classList.remove("down");
-    wakeLoop();
-  });
-  window.addEventListener("blur", function () {
-    isMouseDown = false;
-    root.classList.remove("down");
-    wakeLoop();
-  });
-
-  document.addEventListener("dragstart", function (e) {
-    const t = e.target && e.target.closest ? e.target : null;
-    if (t && t.closest(NATIVE_TEXT)) return;
+  document.addEventListener("dragstart", (e) => {
+    const t = el(e.target);
+    if (t && t.closest(TEXT_FIELD)) return;
     e.preventDefault();
   });
 
-  // mouseleave/mouseenter don't fire on `document`; use the root element.
-  html.addEventListener("mouseleave", function () {
-    visible = false;
-    root.classList.remove("visible");
+  /* ===================================================================
+   * MODE: native-ring  — the ring as the OS cursor
+   * =================================================================== */
+  if (mode === "native-ring") {
+    const svg = (size, r, stroke, color, fill) =>
+      "data:image/svg+xml," +
+      encodeURIComponent(
+        `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}' viewBox='0 0 ${size} ${size}'>` +
+          `<circle cx='${size / 2}' cy='${size / 2}' r='${r}' fill='${fill}' stroke='${color}' stroke-width='${stroke}'/></svg>`,
+      );
+    const cur = (size, r, color, fill, fallback) =>
+      `url("${svg(size, r, 2.5, color, fill)}") ${size / 2} ${size / 2}, ${fallback}`;
+
+    const sets = {
+      dark: { c: "#fafafa", f: "rgba(250,250,250,0.14)" },
+      light: { c: "#050505", f: "rgba(5,5,5,0.12)" },
+    };
+    let css = "";
+    for (const [theme, v] of Object.entries(sets)) {
+      const scope = theme === "light" ? 'html[data-theme="light"].rc-native' : "html.rc-native";
+      const bump = theme === "light" ? "" : ""; // dark rules come first, light ones override
+      css +=
+        `${scope}, ${scope} * { cursor: ${cur(24, 10.5, v.c, "none", "auto")} !important; }\n` +
+        `${scope} :is(${CLICKABLE}) { cursor: ${cur(32, 14, v.c, v.f, "pointer")} !important; }\n` +
+        `${scope} :is(${PRESSABLE}):active { cursor: ${cur(20, 8, v.c, v.f, "pointer")} !important; }\n` +
+        `${scope} :is(${TEXT_FIELD}) { cursor: text !important; }\n` +
+        `${scope} ${OWN_CURSOR}, ${scope} ${OWN_CURSOR} * { cursor: col-resize !important; }\n` +
+        bump;
+    }
+    const style = document.createElement("style");
+    style.id = "rc-native-css";
+    style.textContent = css;
+    document.head.appendChild(style);
+    html.classList.add("rc-native");
+    return;
+  }
+
+  /* ===================================================================
+   * MODE: ring  — the page-drawn ring
+   * =================================================================== */
+  const ring = document.createElement("div");
+  ring.className = "rc";
+  ring.setAttribute("aria-hidden", "true");
+  document.body.appendChild(ring);
+  html.classList.add("rc-on");
+
+  let tx = -100,
+    ty = -100, // where the mouse is
+    x = -100,
+    y = -100, // where the ring is (it trails)
+    s = 1; // current scale
+  let hover = false,
+    down = false,
+    shown = false,
+    first = true,
+    raf = 0;
+
+  const paint = () => {
+    ring.style.transform = "translate3d(" + x + "px," + y + "px,0) scale(" + s.toFixed(3) + ")";
+  };
+
+  function step() {
+    raf = 0;
+    x += (tx - x) * 0.22; // inertia
+    y += (ty - y) * 0.22;
+    const goal = (hover ? 1.75 : 1) * (down ? 0.85 : 1); // swell on hover, squeeze on press
+    s += (goal - s) * 0.18;
+    paint();
+    if (Math.abs(tx - x) > 0.1 || Math.abs(ty - y) > 0.1 || Math.abs(goal - s) > 0.005) {
+      raf = requestAnimationFrame(step);
+    } else {
+      x = tx;
+      y = ty;
+      s = goal;
+      paint();
+    }
+  }
+  const wake = () => {
+    if (!raf) raf = requestAnimationFrame(step);
+  };
+
+  const show = () => {
+    if (!shown) {
+      shown = true;
+      ring.classList.add("on");
+    }
+  };
+  const hide = () => {
+    shown = false;
+    down = false;
+    ring.classList.remove("on", "is-down");
+  };
+  const release = () => {
+    if (!down) return;
+    down = false;
+    ring.classList.remove("is-down");
+    wake();
+  };
+
+  function classify(target) {
+    const t = el(target);
+    const native = !!(t && (t.closest(TEXT_FIELD) || t.closest(OWN_CURSOR)));
+    const h = !native && !!(t && t.closest(CLICKABLE));
+    ring.classList.toggle("is-native", native); // real cursor shows over text fields
+    if (h !== hover) {
+      hover = h;
+      ring.classList.toggle("is-hover", h);
+    }
+    wake();
+  }
+
+  window.addEventListener(
+    "pointermove",
+    (e) => {
+      if (e.pointerType === "touch") return;
+      tx = e.clientX;
+      ty = e.clientY;
+      if (first) {
+        first = false;
+        x = tx;
+        y = ty;
+        paint();
+      }
+      show();
+      classify(e.target);
+    },
+    { passive: true },
+  );
+  window.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "touch" || e.button !== 0) return;
+    down = true;
+    ring.classList.add("is-down");
+    wake();
   });
-  html.addEventListener("mouseenter", function (e) {
-    curX = mx = e.clientX;
-    curY = my = e.clientY;
+  window.addEventListener("pointerup", release);
+  window.addEventListener("pointercancel", release);
+  window.addEventListener("dragend", release);
+  window.addEventListener("contextmenu", release);
+  window.addEventListener("blur", release);
+
+  html.addEventListener("mouseleave", hide);
+  html.addEventListener("mouseenter", (e) => {
+    tx = x = e.clientX;
+    ty = y = e.clientY;
+    paint();
     show();
-    wakeLoop();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) hide();
   });
 
-  // Keep the hover state right when content changes under a still mouse
+  // keep hover right when the page moves under a still mouse (scroll, route change)
   let pending = 0;
-  function recheck() {
+  const recheck = () => {
     pending = 0;
-    if (visible) applyHover(document.elementFromPoint(mx, my));
-  }
-  function schedule() {
+    if (shown) classify(document.elementFromPoint(tx, ty));
+  };
+  const schedule = () => {
     if (!pending) pending = requestAnimationFrame(recheck);
-  }
+  };
   window.addEventListener("scroll", schedule, { passive: true });
-  window.addEventListener("hashchange", function () {
+  window.addEventListener("hashchange", () => {
     setTimeout(schedule, 120);
     setTimeout(schedule, 700);
   });
 
   /* ---------------- optional click diagnostic ----------------
-   * Open the site with  ?debug=cursor  and click around. A panel at the
-   * bottom shows, for the latest click: what is under the pointer, what the
-   * page changed in the next 600 ms, the cursor style the browser applies,
-   * and the click count (2+ = rapid clicking). If a stray shape appears
-   * and the panel shows nothing new, it is not coming from the page.
+   * Open the site with  ?debug=cursor , click until something odd shows, and
+   * screenshot the green panel: it lists what is under the pointer, what the
+   * page changed in the next 600 ms, the cursor style applied, and the click
+   * count (2+ = rapid clicking). If the odd shape is visible and the panel
+   * shows nothing new, it is not coming from the page.
    */
-  (function () {
+  (function debugPanel() {
     let on = false;
     try {
       on = new URLSearchParams(window.location.search).get("debug") === "cursor";
     } catch (e) {}
     if (!on) return;
-
     const box = document.createElement("pre");
     box.style.cssText =
       "position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:2147483647;" +
@@ -212,51 +257,46 @@
       "pointer-events:none;white-space:pre-wrap;opacity:.92";
     box.textContent = "cursor debug: click something…";
     document.body.appendChild(box);
-
     const name = (n) => {
       if (!n) return "(none)";
       if (n.nodeType === 3) return "#text";
-      let s = (n.tagName || "?").toLowerCase();
-      if (n.id) s += "#" + n.id;
-      if (n.classList && n.classList.length) s += "." + [...n.classList].slice(0, 3).join(".");
-      return s;
+      let t = (n.tagName || "?").toLowerCase();
+      if (n.id) t += "#" + n.id;
+      if (n.classList && n.classList.length) t += "." + [...n.classList].slice(0, 3).join(".");
+      return t;
     };
     let seq = 0;
     window.addEventListener(
       "mousedown",
       (e) => {
-        seq++;
-        const id = seq;
+        const id = ++seq;
         const under = document.elementsFromPoint(e.clientX, e.clientY).slice(0, 5).map(name);
         const events = [];
         const mo = new MutationObserver((list) => {
           for (const m of list) {
             if (events.length > 8) break;
-            if (m.target && m.target.closest && m.target.closest(".cc-root")) continue;
+            if (m.target && m.target.closest && m.target.closest(".rc")) continue;
             if (m.type === "childList") {
               m.addedNodes.forEach((n) => events.push("+ " + name(n)));
               m.removedNodes.forEach((n) => events.push("- " + name(n)));
-            } else if (m.type === "attributes") {
-              events.push("~ " + name(m.target) + " [" + m.attributeName + "]");
-            }
+            } else events.push("~ " + name(m.target) + " [" + m.attributeName + "]");
           }
         });
-        mo.observe(document.documentElement, {
+        mo.observe(html, {
           childList: true,
           subtree: true,
           attributes: true,
           attributeFilter: ["class", "style", "open", "hidden"],
         });
         const top = document.elementFromPoint(e.clientX, e.clientY);
-        const cur = top ? getComputedStyle(top).cursor.slice(0, 40) : "?";
+        const cs = top ? getComputedStyle(top).cursor.slice(0, 40) : "?";
         setTimeout(() => {
           mo.disconnect();
           if (id !== seq) return;
           box.textContent =
-            "click #" + id + "  detail(click count)=" + e.detail + "\n" +
+            "click #" + id + "  count=" + e.detail + "\n" +
             "under pointer: " + under.join("  >  ") + "\n" +
-            "computed cursor: " + cur + "\n" +
-            "selection: " + JSON.stringify(String(getSelection()).slice(0, 30)) + "\n" +
+            "computed cursor: " + cs + "\n" +
             "page changes in 600ms: " + (events.length ? events.join(" | ") : "none");
         }, 600);
       },

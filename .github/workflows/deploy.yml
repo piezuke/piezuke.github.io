@@ -1,0 +1,75 @@
+name: Test & deploy
+
+# Setup (once): repository Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
+# Then every push to main runs the tests, rebuilds data.js / per-post pages / sitemap / feed
+# from content/, and publishes ONLY the site files (never content/ or manage.js - so
+# unpublished drafts are not put on the website).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# let a running deployment finish; newer pushes queue behind it
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build content (data.js, per-post pages, sitemap.xml, feed.xml)
+        run: |
+          # Safety: only rebuild data.js from content/ when content/ actually has posts,
+          # so a repo that keeps its posts in data.js is never wiped by a deploy.
+          if find content -name '*.md' 2>/dev/null | grep -q .; then
+            node manage.js sync
+          else
+            echo "content/ has no .md files - keeping the committed data.js"
+            node manage.js seo
+          fi
+
+      - name: Assemble the site folder (only files that belong on the website)
+        run: |
+          mkdir dist
+          cp index.html 404.html style.css fonts.css config.js data.js marked.min.js robots.txt dist/
+          cp -r js media fonts dist/
+          for f in *.html; do cp "$f" dist/; done          # includes the generated per-post pages
+          cp *.xml dist/ 2>/dev/null || true               # sitemap.xml, feed.xml
+          cp -r .well-known dist/ 2>/dev/null || true
+          touch dist/.nojekyll                              # serve files exactly as built
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

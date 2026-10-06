@@ -56,10 +56,6 @@
             name="description"
             content="CTF writeups, projects, notes, etc..."
         />
-        <meta
-            name="description"
-            content="CTF writeups, projects, notes, etc..."
-        />
         <meta property="og:title" content="pieBlog" />
         <meta
             property="og:description"
@@ -85,12 +81,18 @@
         />
         <link rel="stylesheet" href="fonts.css" />
         <link rel="stylesheet" href="style.css" />
+        <noscript><style>#loader{display:none}</style></noscript>
     </head>
     <body>
-        <canvas id="bgcanvas"></canvas>
+        <!-- you read the source, nice. -->
+        <!-- cGx1aHt2MTN3X3MwdXJjM19sMWszX2FfcHIwfQ== -->
+        <a class="skip-link" href="#app" data-cfg="ui.a11y.skipLink">Skip to content</a>
+        <div id="sr-announcer" class="sr-only" role="status" aria-live="polite"></div>
+        <canvas id="bgcanvas" aria-hidden="true"></canvas>
         <div id="progress"></div>
 
-        <div id="loader">
+        <div id="loader" role="status" aria-live="polite">
+            <span class="sr-only" data-cfg="ui.a11y.loading">Loading</span>
             <div style="width: 320px; max-width: 80vw">
                 <video
                     id="loader-video"
@@ -104,7 +106,7 @@
             </div>
             <div class="loadbarwrap"><div class="loadbar"></div></div>
             <div
-                class="loadertext"
+                class="loadertext" aria-hidden="true"
                 id="loaderlabel"
                 data-cfg="ui.loader.initial"
             >
@@ -122,7 +124,7 @@
             >
                 <span id="cfg-brand">PIE</span>
             </a>
-            <nav class="links" id="navlinks"></nav>
+            <nav class="links" id="navlinks" aria-label="Primary" data-cfg-attr="aria-label:ui.a11y.navLabel"></nav>
             <div class="navctl">
                 <div
                     id="cmdk-btn"
@@ -341,11 +343,14 @@
 
         <script defer src="marked.min.js"></script>
         <script defer src="config.js"></script>
+        <script defer src="js/configcheck.js"></script>
         <script defer src="js/cursor.js"></script>
         <script defer src="data.js"></script>
         <script defer src="js/player.js"></script>
         <script defer src="js/canvas.js"></script>
+        <script defer src="js/highlight.js"></script>
         <script defer src="js/app.js"></script>
         <script defer src="js/cmdk.js"></script>
+        <script defer src="js/eggs.js"></script>
     </body>
 </html>

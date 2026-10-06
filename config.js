@@ -4,6 +4,16 @@ const CONFIG = {
     brand: "PIEzuke", // navbar logo text, also used as avatar alt text
     name: "piezuke", // short name shown in tab titles
     language: "en", // <html lang>
+    // Your site's public address, no trailing slash. For GitHub Pages:
+    //   user/org site     https://piezuke.github.io
+    //   project site      https://piezuke.github.io/my-repo     (include the repo name!)
+    //   custom domain     https://piezuke.dev
+    // With it set, `node manage.js sync` also builds a page for every writeup/project
+    // (its own title, description and share image for Google and Discord/Twitter
+    // previews), plus sitemap.xml and feed.xml. Leave "" to switch all of that off.
+    url: "",
+    author: "PIEzuke", // author name used in the RSS feed and for search engines
+    feed: { enabled: true, title: "", description: "" }, // feed.xml ("" = use site name / description)
     description: "CTF writeups, projects, notes, etc...", // meta + social cards
     titleTemplate: "{page} — {site}", // tab title for inner pages
     avatar: { webp: "media/pfp.webp", jpg: "media/pfp.jpg" }, // profile picture
@@ -55,6 +65,7 @@ const CONFIG = {
       hintNavigate: "navigate",
       hintOpen: "open",
       hintClose: "close",
+      tagsLabel: "tags", // shown above the clickable tag chips ("#pwn" filters by tag)
       tags: {
         page: "page",
         writeup: "writeup",
@@ -64,7 +75,16 @@ const CONFIG = {
     },
 
     loader: {
+      // Minimum time (milliseconds) the loading screen stays up when the site first
+      // opens. 2000 = 2 seconds. 0 = as short as possible.
+      minDuration: 2000,
+      // ...and when you click to another page. Shorter feels better on repeat visits;
+      // set it to 2000 if you want the full loading screen every time.
+      pageChangeDuration: 600,
+      // Browser Back / Forward buttons skip the loading screen entirely.
+      skipOnBackForward: true,
       initial: "Connecting to PIE's Archives...",
+      // one of these is picked at random on every page change
       labels: [
         "bluh bluh bluh bluh....",
         "buh buh buh buh....",
@@ -93,7 +113,21 @@ const CONFIG = {
       label: "Scroll to top or bottom",
     },
 
-    code: { copy: "copy", copied: "copied ✓", label: "Copy code to clipboard" },
+    code: {
+      copy: "copy",
+      copied: "copied ✓",
+      label: "Copy code to clipboard",
+      highlight: true, // syntax highlighting in code blocks
+      languageLabel: true, // small language name in the corner of each block
+    },
+
+    // screen-reader / keyboard help
+    a11y: {
+      skipLink: "Skip to content",
+      navigated: "Navigated to {page}", // announced after each page change
+      loading: "Loading",
+      navLabel: "Primary",
+    },
 
     miniPlayer: {
       label: "Audio player",
@@ -241,6 +275,32 @@ const CONFIG = {
         name: "PIEzuke",
         tagline: "A bit about myself",
       },
+      // Extra frontmatter fields (ctf, category, points, difficulty, ...) are shown in
+      // the post header. `labels` renames them; anything not listed shows as written.
+      meta: {
+        labels: {
+          ctf: "CTF",
+          event: "Event",
+          category: "Category",
+          points: "Points",
+          difficulty: "Difficulty",
+          solves: "Solves",
+        },
+      },
+      copyLink: {
+        label: "copy link",
+        copied: "link copied ✓",
+        title: "Copy a shareable link to this post",
+      },
+      sectionLink: { title: "Copy link to this section", copied: "copied ✓" },
+      // Flags in writeups ( bi0s{...} ) are blurred until clicked, so readers can
+      // try the challenge first.
+      flags: {
+        enabled: true,
+        hint: "click to reveal",
+        prefixes: ["flag", "ctf", "bi0s", "teambi0s", "pico", "picoctf", "htb", "thm", "pluh"],
+        generic: true, // also blur anything shaped like  word{something-long}
+      },
     },
 
     /* ---- NOTES VAULT ---- */
@@ -378,6 +438,56 @@ const CONFIG = {
     playlist: [],
   },
 
+  /* --------------------------- FLAG HUNT (fun) --------------------------- */
+  // Hidden flags scattered around the site. Found one? Open the search box
+  // (press "/" or Ctrl+K) and paste it. Type "flags" to see progress and hints.
+  easterEggs: {
+    enabled: true,
+    storageKey: "pie-flags", // progress is remembered in this browser only
+    toast: {
+      found: "flag found → {flag}",
+      again: "you already have that one",
+      wrong: "not a flag I know. keep hunting.",
+      progress: "{found}/{total} flags",
+      all: "all {total} flags. you are the pwner now.",
+    },
+    labels: {
+      commandTag: "cmd",
+      flagTag: "flag",
+      submit: "submit this flag",
+      flagsTitle: "{found}/{total} flags found",
+      hintPrefix: "hint",
+      foundMark: "✓",
+    },
+    consoleArt: ["  ___ ___ ___", " | _ \\_ _| __|", " |  _/| || _|", " |_| |___|___|"],
+    consoleMessage:
+      "hey, curious one. flag #1 is free: {flag}   — press / on the page and paste it into the search box.",
+    // `id`s are used by the code, so don't rename them. Change the flags and hints freely.
+    // (The "source" flag also lives, base64-encoded, in a comment in index.html.)
+    flags: [
+      { id: "console", flag: "pluh{c0ns0le_g0blin_sp0tted}", hint: "the browser has a developer console. open it." },
+      { id: "konami", flag: "pluh{up_up_d0wn_d0wn_l_r_l_r_b_a}", hint: "an old cheat code. 1986. Konami." },
+      { id: "avatar", flag: "pluh{st0p_p0king_my_f4ce}", hint: "poke the profile picture. a lot.", clicks: 7 },
+      { id: "command", flag: "pluh{sudo_make_me_a_sandwich}", hint: "the search box understands more than it lets on. try typing help." },
+      { id: "source", flag: "pluh{v13w_s0urc3_l1k3_a_pr0}", hint: "read the page source. base64 is not encryption." },
+      { id: "loader", flag: "pluh{0MG_pr0ud_0f_y0u_wh0ever_y0ur}", hint: "be patient on the loading screen." },
+    ],
+    // typed into the search box. `flag: "<id>"` awards that flag.
+    commands: [
+      { input: "help", output: "try: whoami · ls · cat flag.txt · sudo · flags" },
+      { input: "whoami", output: "a curious human (probably)" },
+      { input: "ls", output: "flag.txt  secrets/  definitely-not-a-flag.png" },
+      { input: "cat flag.txt", output: "permission denied. maybe ask nicely? (sudo ...)" },
+      { input: "sudo", output: "nice try. you are not in the sudoers file. this incident will be reported." },
+      { input: "sudo make me a sandwich", output: "okay.", flag: "command" },
+      { input: "rm -rf /", output: "bold. but no." },
+    ],
+  },
+
   /* ------------------------------ CURSOR ------------------------------ */
-  cursor: "on", // "on" = custom ring cursor, "off" = normal system cursor
+  // "ring"        = the ring cursor that follows your mouse (default)
+  // "native-ring" = the same ring drawn AS the system cursor (no hidden-cursor tricks)
+  // "off"         = normal system cursor
+  // You can also test a mode without editing this file:  yoursite/?cursor=native-ring
+  cursor: "ring",
 };

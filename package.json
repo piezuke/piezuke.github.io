@@ -1,0 +1,21 @@
+{
+  "name": "piezuke-blog",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Single-page CTF writeups / projects / notes site. No build step; devDependencies are only for the test suite.",
+  "scripts": {
+    "test": "node --test --test-timeout=60000",
+    "sync": "node manage.js sync",
+    "seo": "node manage.js seo",
+    "watch": "node manage.js watch"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0"
+  },
+  "optionalDependencies": {
+    "canvas": "^3.1.0"
+  }
+}

@@ -1,1 +1,13 @@
+# Only used when GitHub Pages is set to "Deploy from a branch" (Jekyll).
+# With the included GitHub Actions workflow you don't need this file.
 include: [".well-known"]
+exclude:
+  - node_modules
+  - tests
+  - package.json
+  - package-lock.json
+  - manage.js
+  - content
+  - README.md
+  - .github
+  - .seo-manifest.json

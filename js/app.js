@@ -436,6 +436,58 @@ window.addEventListener("hashchange", () => navigate());
 let isInitialLoad = true;
 let currentRoutePath = "";
 
+/* ---- link intent: was this page change a click, or Back/Forward? ---- */
+let linkNavAt = 0;
+function markLinkNav() {
+  linkNavAt = Date.now();
+}
+document.addEventListener(
+  "click",
+  (e) => {
+    const a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+    if (a && /^#/.test(a.getAttribute("href") || "")) markLinkNav();
+  },
+  true,
+);
+// a hash change nobody clicked or searched for = the Back / Forward buttons
+function isBackForward() {
+  return cfg("ui.loader.skipOnBackForward", true) && Date.now() - linkNavAt > 1200;
+}
+
+/* ---- deep links to a section:  #/writeups/my-post?h=h-2-intro ---- */
+function sectionFromHash() {
+  const { sub } = parseHash();
+  if (!sub) return "";
+  try {
+    return new URLSearchParams(sub).get("h") || "";
+  } catch (e) {
+    return "";
+  }
+}
+function scrollAfterRender() {
+  const id = sectionFromHash();
+  const el = id && /^[a-zA-Z0-9_-]+$/.test(id) ? document.getElementById(id) : null;
+  if (el) {
+    try {
+      el.scrollIntoView({ block: "start", behavior: "instant" });
+    } catch (e) {
+      el.scrollIntoView();
+    }
+  } else {
+    window.scrollTo({ top: 0 });
+  }
+}
+
+/* ---- screen-reader announcements ---- */
+function announce(text) {
+  const el = document.getElementById("sr-announcer");
+  if (!el || !text) return;
+  el.textContent = "";
+  setTimeout(() => {
+    el.textContent = text;
+  }, 60);
+}
+
 function navigate() {
   const navlinks = document.getElementById("navlinks");
   if (navlinks) navlinks.classList.remove("open");
@@ -453,7 +505,10 @@ function navigate() {
   };
 
   document.querySelectorAll("nav.links a").forEach((a) => {
-    a.classList.toggle("active", canonicalRoute(a.dataset.route) === rootRoute);
+    const active = canonicalRoute(a.dataset.route) === rootRoute;
+    a.classList.toggle("active", active);
+    if (active) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
   });
 
   // Toggle in-notes class to hide global footer during vault view
@@ -463,23 +518,16 @@ function navigate() {
     isInitialLoad = false;
     currentRoutePath = path;
     render(path);
-    window.scrollTo({ top: 0 });
-    const l = document.getElementById("loader");
-    const vid = document.getElementById("loader-video");
-    if (vid) {
-      try {
-        vid.currentTime = 0;
-        vid.play().catch(() => {});
-      } catch (e) {}
-    }
+    scrollAfterRender();
+    loaderVideoStart();
+    setLoaderAria(true);
+    // the loader is visible from the first paint; keep it up until `minDuration`
+    // has passed since the page started loading
+    const token = ++loaderToken;
+    const wait = Math.max(0, loaderMinMs() - performance.now());
     setTimeout(() => {
-      if (l) l.classList.add("hide");
-      if (vid) {
-        try {
-          vid.pause();
-        } catch (e) {}
-      }
-    }, 240);
+      if (token === loaderToken) loaderHide();
+    }, wait);
     return;
   }
 
@@ -494,6 +542,7 @@ function navigate() {
     if (document.getElementById("noteswrap")) {
       updateActiveNoteInView(noteId);
       document.title = pageTitle([slugOf("notes"), noteId]);
+      announce(fmt(cfg("ui.a11y.navigated", "Navigated to {page}"), { page: document.title }));
       if (window.innerWidth <= 800) {
         const noteMain = document.getElementById("noteMain");
         if (noteMain) noteMain.scrollIntoView({ behavior: "smooth" });
@@ -509,38 +558,90 @@ function navigate() {
     }
   }
 
+  // Back / Forward buttons: swap the page instantly, no loading screen
+  if (isBackForward()) {
+    loaderToken++; // cancel any loader still counting down
+    loaderHide();
+    render(path);
+    scrollAfterRender();
+    return;
+  }
+
   showLoader(() => {
     render(path);
-    window.scrollTo({ top: 0 });
+    scrollAfterRender();
   });
 }
 
-function showLoader(cb) {
+/* ========================= LOADING SCREEN =========================
+ * How long it stays up is set in config.js -> ui.loader.minDuration (ms).
+ * It is a MINIMUM: if a page takes longer to render, the screen waits for it.
+ * The new page is rendered behind the loader early on, so nothing pops in.
+ */
+let loaderToken = 0;
+
+function loaderMinMs() {
+  const v = Number(cfg("ui.loader.minDuration", 2000));
+  return isFinite(v) && v > 0 ? v : 0;
+}
+// how long the loader stays up when clicking to another page
+function loaderPageMs() {
+  const v = Number(cfg("ui.loader.pageChangeDuration", 600));
+  return isFinite(v) && v > 0 ? v : 0;
+}
+function setLoaderAria(visible) {
+  const l = document.getElementById("loader");
+  const appEl = document.getElementById("app");
+  if (l) {
+    if (visible) l.removeAttribute("aria-hidden");
+    else l.setAttribute("aria-hidden", "true");
+  }
+  if (appEl) {
+    if (visible) appEl.setAttribute("aria-busy", "true");
+    else appEl.removeAttribute("aria-busy");
+  }
+}
+function loaderVideoStart() {
+  const vid = document.getElementById("loader-video");
+  if (!vid) return;
+  try {
+    vid.currentTime = 0;
+    vid.play().catch(() => {});
+  } catch (e) {}
+}
+function loaderHide() {
   const l = document.getElementById("loader");
   const vid = document.getElementById("loader-video");
+  if (l) l.classList.add("hide");
+  setLoaderAria(false);
+  if (vid) {
+    try {
+      vid.pause();
+    } catch (e) {}
+  }
+}
+
+function showLoader(cb, minOverride) {
+  const l = document.getElementById("loader");
   const labels = cfg("ui.loader.labels", []);
   const lbl = document.getElementById("loaderlabel");
   if (lbl && labels.length)
     lbl.textContent = labels[Math.floor(Math.random() * labels.length)];
   if (l) l.classList.remove("hide");
-  if (vid) {
-    try {
-      vid.currentTime = 0;
-      vid.play().catch(() => {});
-    } catch (e) {}
-  }
+  setLoaderAria(true);
+  loaderVideoStart();
+
+  const min = minOverride != null ? minOverride : loaderPageMs();
+  const token = ++loaderToken; // a newer navigation cancels this one's timers
+  const swapAt = Math.min(480, min); // swap the page while it is fully covered
+  const hideAt = Math.max(min, swapAt + 120);
 
   setTimeout(() => {
-    cb();
-    setTimeout(() => {
-      if (l) l.classList.add("hide");
-      if (vid) {
-        try {
-          vid.pause();
-        } catch (e) {}
-      }
-    }, 120);
-  }, 480);
+    if (token === loaderToken) cb();
+  }, swapAt);
+  setTimeout(() => {
+    if (token === loaderToken) loaderHide();
+  }, hideAt);
 }
 
 let isFirstRender = true;
@@ -583,6 +684,8 @@ function render(path) {
     if (app) app.innerHTML = `<div class="fade-route">${html}</div>`;
     document.title = pageTitle(parts);
     afterRender(path);
+    if (!isFirstRender)
+      announce(fmt(cfg("ui.a11y.navigated", "Navigated to {page}"), { page: document.title }));
     if (!isFirstRender && app) {
       try {
         app.focus({ preventScroll: true });
@@ -824,6 +927,19 @@ function mdToHtmlWithOutline(md) {
   return { html, outline };
 }
 
+// CTF details from frontmatter (ctf, category, points, difficulty, ...)
+function postMetaHTML(item) {
+  const meta = item && item.meta && typeof item.meta === "object" ? item.meta : null;
+  if (!meta || !Object.keys(meta).length) return "";
+  const labels = cfg("pages.post.meta.labels", {});
+  return `<div class="postmeta">${Object.entries(meta)
+    .map(
+      ([k, v]) =>
+        `<span class="pm" data-k="${escapeHTML(k)}"><b>${escapeHTML(labels[k] || k)}</b><span>${escapeHTML(v)}</span></span>`,
+    )
+    .join("")}</div>`;
+}
+
 function viewPost(arr, slug, page) {
   const item = arr.find((x) => x.slug === slug);
   if (!item) return view404();
@@ -856,7 +972,8 @@ function viewPost(arr, slug, page) {
         <div class="article-head">
           <div class="eyebrow">${escapeHTML(item.tag)}</div>
           <h1>${escapeHTML(item.title)}</h1>
-          <div class="metarow"><span>${escapeHTML(item.date)}</span><span>${escapeHTML(fmt(PO.readTime || "{n} min read", { n: readTime }))}</span></div>
+          <div class="metarow"><span>${escapeHTML(item.date)}</span><span>${escapeHTML(fmt(PO.readTime || "{n} min read", { n: readTime }))}</span><button type="button" class="share-btn" id="sharebtn" title="${escapeHTML(cfg("pages.post.copyLink.title", ""))}">${escapeHTML(cfg("pages.post.copyLink.label", "copy link"))}</button></div>
+          ${postMetaHTML(item)}
         </div>
         <div class="article-body" id="articlebody">${html}</div>
       </article>
@@ -1562,9 +1679,157 @@ function setupHeroRoles() {
   })();
 }
 
+/* ========================= POST FEATURES ========================= */
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch (err) {}
+    ta.remove();
+    return ok;
+  }
+}
+
+// Shareable address of a post (and optionally one of its sections).
+// With site.url set this is the post's own page (rich link previews);
+// otherwise it is the current page + the #/route.
+function postUrl(page, slug, sectionId) {
+  const base = String(cfg("site.url", "")).trim().replace(/\/+$/, "");
+  const file = String(slug).toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "post";
+  const root = base ? `${base}/${slugOf(page)}-${file}.html` : location.href.split("#")[0];
+  return root + hrefFor(page, slug) + (sectionId ? "?h=" + encodeURIComponent(sectionId) : "");
+}
+
+function flashText(el, text, ms) {
+  const prev = el.dataset.label || (el.dataset.label = el.textContent);
+  el.textContent = text;
+  el.classList.add("copied");
+  clearTimeout(el._flash);
+  el._flash = setTimeout(() => {
+    el.textContent = prev;
+    el.classList.remove("copied");
+  }, ms || 1500);
+}
+
+function setupShareButton(page, slug) {
+  const btn = document.getElementById("sharebtn");
+  if (!btn) return;
+  btn.onclick = async () => {
+    if (await copyText(postUrl(page, slug)))
+      flashText(btn, cfg("pages.post.copyLink.copied", "link copied ✓"));
+  };
+}
+
+// small "#" next to every h2/h3 that copies a link to that section
+function setupHeadingLinks(page, slug) {
+  document.querySelectorAll(".article-body h2[id], .article-body h3[id]").forEach((h) => {
+    if (h.querySelector(".h-link")) return;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "h-link";
+    b.textContent = "#";
+    b.title = cfg("pages.post.sectionLink.title", "Copy link to this section");
+    b.setAttribute("aria-label", b.title);
+    b.onclick = async (e) => {
+      e.preventDefault();
+      if (await copyText(postUrl(page, slug, h.id)))
+        flashText(b, cfg("pages.post.sectionLink.copied", "copied ✓"));
+    };
+    h.appendChild(b);
+  });
+}
+
+function highlightCode() {
+  if (typeof Highlight === "undefined") return;
+  const opts = {
+    highlight: cfg("ui.code.highlight", true) !== false,
+    label: cfg("ui.code.languageLabel", true) !== false,
+  };
+  document.querySelectorAll(".article-body").forEach((el) => Highlight.highlightAll(el, opts));
+}
+
+// Flags such as bi0s{...} are blurred until clicked, so readers can try first.
+function flagMatcher() {
+  const F = cfg("pages.post.flags", {});
+  if (F.enabled === false) return null;
+  const parts = [];
+  const prefixes = (F.prefixes || [])
+    .map((x) => String(x).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .filter(Boolean);
+  if (prefixes.length) parts.push("(?:" + prefixes.join("|") + ")\\{[^{}\\s]{1,200}\\}");
+  if (F.generic !== false) parts.push("\\b[A-Za-z0-9_]{2,20}\\{[^{}\\s]{4,200}\\}");
+  return parts.length ? new RegExp(parts.join("|"), "gi") : null;
+}
+
+function setupSpoilers() {
+  const re = flagMatcher();
+  if (!re) return;
+  const hint = cfg("pages.post.flags.hint", "click to reveal");
+  document.querySelectorAll(".article-body").forEach((root) => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(n) {
+        const p = n.parentElement;
+        if (!p || p.closest(".spoiler, script, style, .code-copy, .h-link")) return NodeFilter.FILTER_REJECT;
+        re.lastIndex = 0;
+        return re.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      },
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach((node) => {
+      const text = node.nodeValue;
+      const frag = document.createDocumentFragment();
+      let last = 0;
+      re.lastIndex = 0;
+      let m;
+      while ((m = re.exec(text))) {
+        if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+        const sp = document.createElement("span");
+        sp.className = "spoiler";
+        sp.tabIndex = 0;
+        sp.setAttribute("role", "button");
+        sp.setAttribute("aria-expanded", "false");
+        sp.title = hint;
+        sp.textContent = m[0];
+        frag.appendChild(sp);
+        last = m.index + m[0].length;
+      }
+      if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+      node.parentNode.replaceChild(frag, node);
+    });
+  });
+}
+
+// one delegated handler for every spoiler on every page
+document.addEventListener("click", (e) => {
+  const sp = e.target && e.target.closest ? e.target.closest(".spoiler") : null;
+  if (!sp) return;
+  sp.classList.add("revealed");
+  sp.setAttribute("aria-expanded", "true");
+  sp.removeAttribute("title");
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const sp = e.target && e.target.closest ? e.target.closest(".spoiler") : null;
+  if (!sp) return;
+  e.preventDefault();
+  sp.click();
+});
+
 function afterRender(path) {
   setupOutlineListeners();
   setupReveal();
+  highlightCode();
+  setupSpoilers();
   setupCodeCopy();
   setupTagFilters();
   if (typeof setupMusicPlayer === "function") setupMusicPlayer();
@@ -1577,6 +1842,11 @@ function afterRender(path) {
     seg.length > 1 &&
     (seg[0] === slugOf("writeups") || seg[0] === slugOf("projects"));
   setupProgress(isPost ? "articlebody" : null);
+  if (isPost) {
+    const postPage = pageForSlug(seg[0]);
+    setupShareButton(postPage, seg[1]);
+    setupHeadingLinks(postPage, seg[1]);
+  }
 
   // Glitch flicker on home hero title
   if (glitchInterval) {
@@ -1637,6 +1907,21 @@ function initConfig() {
   setAttr('meta[property="og:image"]', "content", cfg("site.ogImage"));
   setAttr('link[rel="icon"]', "href", cfg("site.favicon"));
 
+  // home page canonical address (per-post pages already carry their own)
+  const siteUrl = String(cfg("site.url", "")).trim().replace(/\/+$/, "");
+  if (siteUrl && !document.querySelector('link[rel="canonical"]')) {
+    const link = document.createElement("link");
+    link.rel = "canonical";
+    link.href = siteUrl + "/";
+    document.head.appendChild(link);
+    if (!document.querySelector('meta[property="og:url"]')) {
+      const og = document.createElement("meta");
+      og.setAttribute("property", "og:url");
+      og.content = siteUrl + "/";
+      document.head.appendChild(og);
+    }
+  }
+
   const cfgBrand = document.getElementById("cfg-brand");
   if (cfgBrand) cfgBrand.textContent = cfg("site.brand", "");
 
@@ -1657,6 +1942,18 @@ function initConfig() {
   const ft = document.getElementById("cfg-footer-text");
   if (ft) ft.textContent = fmt(cfg("footer.text", ""));
 }
+
+// "Skip to content": #app would be read as a route, so focus it by hand
+document.addEventListener("click", (e) => {
+  const a = e.target && e.target.closest ? e.target.closest("a.skip-link") : null;
+  if (!a) return;
+  e.preventDefault();
+  const appEl = document.getElementById("app");
+  if (appEl) {
+    appEl.focus();
+    appEl.scrollIntoView({ block: "start" });
+  }
+});
 
 try {
   initConfig();

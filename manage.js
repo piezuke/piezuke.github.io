@@ -16,6 +16,8 @@
  *   node manage.js add writeup   - Add a new writeup
  *   node manage.js add project   - Add a new project
  *   node manage.js ui            - Launch local browser GUI (port 8088)
+ *   node manage.js seo           - Regenerate per-post pages, sitemap.xml, feed.xml
+ *                                  (also runs automatically after every sync)
  */
 
 const fs = require("fs");
@@ -29,6 +31,9 @@ const WRITEUPS_DIR = path.join(CONTENT_DIR, "writeups");
 const PROJECTS_DIR = path.join(CONTENT_DIR, "projects");
 const NOTES_DIR = path.join(CONTENT_DIR, "notes");
 const DATA_FILE = path.join(ROOT_DIR, "data.js");
+const CONFIG_FILE = path.join(ROOT_DIR, "config.js");
+const INDEX_FILE = path.join(ROOT_DIR, "index.html");
+const SEO_MANIFEST = path.join(ROOT_DIR, ".seo-manifest.json");
 
 // Ensure content directories exist
 function ensureDirs() {
@@ -90,6 +95,20 @@ function resolveNotesFolder(folder) {
   return folderPath;
 }
 
+// "text with \"quotes\"" -> text with "quotes"   ('it''s' -> it's)
+function unquoteYamlScalar(val) {
+  const v = String(val);
+  if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) {
+    return v
+      .slice(1, -1)
+      .replace(/\\(["\\n])/g, (m, c) => (c === "n" ? "\n" : c));
+  }
+  if (v.length >= 2 && v.startsWith("'") && v.endsWith("'")) {
+    return v.slice(1, -1).replace(/''/g, "'");
+  }
+  return v.replace(/^['"]|['"]$/g, "");
+}
+
 // Simple YAML frontmatter parser
 function parseFrontmatter(raw) {
   const content = String(raw || "");
@@ -143,8 +162,7 @@ function parseFrontmatter(raw) {
           .map((s) => s.trim().replace(/^['"]|['"]$/g, ""))
           .filter(Boolean);
       } else {
-        val = val.replace(/^['"]|['"]$/g, "");
-        meta[key] = val;
+        meta[key] = unquoteYamlScalar(val);
       }
     }
   }
@@ -170,7 +188,10 @@ function serializeFrontmatter(meta, body) {
         strVal.includes('"') ||
         strVal.includes("'")
       ) {
-        yaml += `${key}: "${strVal.replace(/"/g, '\\"')}"\n`;
+        yaml += `${key}: "${strVal
+          .replace(/\\/g, "\\\\")
+          .replace(/"/g, '\\"')
+          .replace(/\r?\n/g, "\\n")}"\n`;
       } else {
         yaml += `${key}: ${strVal}\n`;
       }
@@ -204,79 +225,453 @@ function extractHeading(body) {
   return match ? match[1].trim() : null;
 }
 
+// ---------------------------------------------------------------------------
+// ENTRIES (writeups / projects): shared reader
+// ---------------------------------------------------------------------------
+// Frontmatter keys with a fixed meaning. Any OTHER key (ctf, category, points,
+// difficulty, ...) is kept as free-form `meta` and shown in the post header.
+const KNOWN_META = new Set([
+  "title", "slug", "tag", "date", "excerpt", "pills", "image", "draft", "updated", "id",
+]);
+const MONTHS = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+
+// "2025-06", "2025 June", "June 2025", "2025-06-14"  ->  "2025-06-01" (or null)
+function toISODate(value) {
+  const str = String(value == null ? "" : value).trim();
+  if (!str) return null;
+  const pad = (n) => String(n).padStart(2, "0");
+  let m = str.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
+  if (m) return `${m[1]}-${pad(+m[2])}-${pad(+(m[3] || 1))}`;
+  m = str.match(/^(\d{4})\D+([A-Za-z]{3,})/) || str.match(/^([A-Za-z]{3,})\D+(\d{4})/);
+  if (m) {
+    const yearFirst = /^\d/.test(m[1]);
+    const year = yearFirst ? m[1] : m[2];
+    const mon = MONTHS.indexOf((yearFirst ? m[2] : m[1]).slice(0, 3).toLowerCase());
+    if (mon >= 0) return `${year}-${pad(mon + 1)}-01`;
+  }
+  m = str.match(/^(\d{4})$/);
+  if (m) return `${m[1]}-01-01`;
+  const t = Date.parse(str);
+  if (!isNaN(t)) {
+    const d = new Date(t);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+  return null;
+}
+
+function compareEntriesNewestFirst(a, b) {
+  const da = toISODate(a.date),
+    db = toISODate(b.date);
+  if (da && db && da !== db) return db.localeCompare(da);
+  return String(b.date).localeCompare(String(a.date));
+}
+
+function isTruthy(v) {
+  return /^(true|yes|1|on)$/i.test(String(v == null ? "" : v).trim());
+}
+
+function extraMetaFrom(meta) {
+  const out = {};
+  for (const [k, v] of Object.entries(meta || {})) {
+    if (KNOWN_META.has(k)) continue;
+    if (!/^[A-Za-z][\w -]{0,30}$/.test(k)) continue;
+    const val = Array.isArray(v) ? v.join(", ") : String(v == null ? "" : v);
+    const clean = val.trim().slice(0, 200);
+    if (clean) out[k.trim()] = clean;
+  }
+  return out;
+}
+
+// "ctf: PicoCTF\ncategory: pwn" (UI textarea) or {ctf:"x"} -> meta object
+function parseExtraText(text) {
+  const meta = {};
+  for (const line of String(text || "").split(/\r?\n/)) {
+    const i = line.indexOf(":");
+    if (i < 1) continue;
+    meta[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+  }
+  return extraMetaFrom(meta);
+}
+
+// --ctf X --category pwn --points 500 --difficulty hard --meta "a=b,c=d" --draft --image x.png
+function metaFromFlags(flags) {
+  const extra = {};
+  for (const k of ["ctf", "category", "points", "difficulty", "solves"]) {
+    if (flags[k] && flags[k] !== true) extra[k] = String(flags[k]);
+  }
+  if (flags.meta && flags.meta !== true) {
+    for (const pair of String(flags.meta).split(",")) {
+      const i = pair.indexOf("=");
+      if (i > 0) extra[pair.slice(0, i).trim()] = pair.slice(i + 1).trim();
+    }
+  }
+  const out = extraMetaFrom(extra);
+  if (flags.image && flags.image !== true) out.__image = String(flags.image);
+  return out;
+}
+function applyFlagMeta(meta, flags) {
+  const extra = metaFromFlags(flags);
+  if (extra.__image) {
+    meta.image = extra.__image;
+    delete extra.__image;
+  }
+  Object.assign(meta, extra);
+  if (flags.draft) meta.draft = "true";
+  return meta;
+}
+
+function readEntries(dir, defaultTag) {
+  const entries = [];
+  let drafts = 0;
+  for (const file of findFilesRecursive(dir)) {
+    const raw = fs.readFileSync(file, "utf8");
+    const { meta, body } = parseFrontmatter(raw);
+    if (isTruthy(meta.draft)) {
+      drafts++;
+      continue;
+    }
+    const slug = meta.slug || path.basename(file, ".md");
+    const title = meta.title || extractHeading(body) || slug;
+    let pills = meta.pills || [];
+    if (typeof pills === "string")
+      pills = pills.split(",").map((s) => s.trim()).filter(Boolean);
+    const excerpt =
+      meta.excerpt ||
+      body.split("\n\n")[0].replace(/^#+\s+/g, "").slice(0, 160) + "...";
+    const entry = {
+      title,
+      tag: meta.tag || defaultTag,
+      date: meta.date || new Date().toISOString().slice(0, 7),
+      excerpt,
+      pills,
+      slug,
+      body,
+    };
+    if (meta.image) entry.image = String(meta.image);
+    if (meta.updated) entry.updated = String(meta.updated);
+    const extra = extraMetaFrom(meta);
+    if (Object.keys(extra).length) entry.meta = extra;
+    entries.push(entry);
+  }
+  entries.sort(compareEntriesNewestFirst);
+  return { entries, drafts };
+}
+
+// frontmatter for an entry that already lives in data.js (used by `export`)
+function frontmatterFor(e, slug) {
+  const m = {
+    title: e.title,
+    tag: e.tag,
+    date: e.date,
+    excerpt: e.excerpt,
+    pills: e.pills,
+    slug,
+  };
+  if (e.image) m.image = e.image;
+  if (e.updated) m.updated = e.updated;
+  if (e.meta) Object.assign(m, e.meta);
+  return m;
+}
+
+// ---------------------------------------------------------------------------
+// SEO: per-post pages, sitemap.xml, feed.xml, robots.txt
+// ---------------------------------------------------------------------------
+// The site is a hash-routed single page app, which search engines and link
+// previews can't see into. So every writeup/project also gets a small static
+// page (writeups-<slug>.html) containing the full app shell PLUS its own
+// <title>, description, canonical URL, share image and the article text.
+// People who open it land straight on that post inside the normal app.
+
+function loadSiteConfig() {
+  try {
+    const src = fs.readFileSync(CONFIG_FILE, "utf8");
+    return new Function(src + "\n;return CONFIG;")();
+  } catch (e) {
+    return null;
+  }
+}
+
+const DEFAULT_ROUTE_SLUGS = {
+  writeups: "writeups",
+  projects: "projects",
+};
+function routeSlugFor(cfg, page) {
+  const raw = cfg && cfg.routes && cfg.routes[page] ? String(cfg.routes[page]) : "/" + DEFAULT_ROUTE_SLUGS[page];
+  return raw.replace(/^[#/]+|\/+$/g, "").split("/")[0] || DEFAULT_ROUTE_SLUGS[page];
+}
+const safeFileName = (s) => String(s).toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "post";
+
+function xmlEscape(v) {
+  return String(v == null ? "" : v)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+const attrEscape = xmlEscape;
+
+function fmtTemplate(str, vars) {
+  return String(str == null ? "" : str).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+}
+
+// markdown -> safe HTML (same rules as the browser renderer: raw HTML is
+// escaped, unsafe URL schemes are dropped)
+function renderMarkdownSafe(md) {
+  let marked;
+  try {
+    const mod = require("./marked.min.js");
+    marked = mod.marked || mod;
+  } catch (e) {
+    return `<pre>${xmlEscape(md)}</pre>`;
+  }
+  const renderer = new marked.Renderer();
+  const cleanUrl = (raw, isImage) => {
+    const href = String(raw || "").trim().replace(/[\u0000-\u0020\u007f]/g, "");
+    const hasScheme = /^[a-z][a-z\d+.-]*:/i.test(href);
+    const ok = isImage ? /^https?:/i.test(href) : /^(https?:|mailto:|tel:)/i.test(href);
+    return hasScheme && !ok ? "" : href;
+  };
+  const pick = (a, b, c) => (typeof a === "object" ? [a.href, a.title, a.text] : [a, b, c]);
+  renderer.html = (a) => xmlEscape(typeof a === "object" ? a.text : a);
+  renderer.link = (a, b, c) => {
+    const [href, , text] = pick(a, b, c);
+    const h = cleanUrl(href, false);
+    return h ? `<a href="${attrEscape(h)}" rel="noopener noreferrer">${text}</a>` : text || "";
+  };
+  renderer.image = (a, b, c) => {
+    const [href, , text] = pick(a, b, c);
+    const h = cleanUrl(href, true);
+    return h ? `<img src="${attrEscape(h)}" alt="${attrEscape(text || "")}" loading="lazy">` : "";
+  };
+  try {
+    return marked.parse(md, { renderer });
+  } catch (e) {
+    return `<pre>${xmlEscape(md)}</pre>`;
+  }
+}
+
+// set (or insert) a <meta> / <link> tag in an HTML <head>
+function upsertTag(html, matcher, tag) {
+  const re = new RegExp(matcher, "i");
+  if (re.test(html)) return html.replace(re, () => tag);
+  return html.replace(/<\/head>/i, () => `    ${tag}\n    </head>`);
+}
+const metaName = (n) => `<meta\\s+name="${n}"[^>]*?/?>`;
+const metaProp = (n) => `<meta\\s+property="${n}"[^>]*?/?>`;
+
+function buildStubPage(template, cfg, kind, entry, siteUrl) {
+  const site = cfg.site || {};
+  const siteName = site.name || "";
+  const pageSlug = routeSlugFor(cfg, kind);
+  const file = `${pageSlug}-${safeFileName(entry.slug)}.html`;
+  const url = `${siteUrl}/${file}`;
+  const titleTpl = site.titleTemplate || "{page} — {site}";
+  const title = fmtTemplate(titleTpl, { page: entry.title, site: siteName });
+  const desc = String(entry.excerpt || site.description || "").replace(/\s+/g, " ").trim().slice(0, 200);
+  const imgPath = entry.image || site.ogImage || "";
+  const image = imgPath ? (/^https?:/i.test(imgPath) ? imgPath : `${siteUrl}/${imgPath.replace(/^\//, "")}`) : "";
+  const iso = toISODate(entry.date);
+  const author = site.author || site.brand || siteName;
+
+  let html = template;
+  // <title>
+  html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${xmlEscape(title)}</title>`);
+  html = upsertTag(html, metaName("description"), `<meta name="description" content="${attrEscape(desc)}" />`);
+  html = upsertTag(html, metaProp("og:title"), `<meta property="og:title" content="${attrEscape(title)}" />`);
+  html = upsertTag(html, metaProp("og:description"), `<meta property="og:description" content="${attrEscape(desc)}" />`);
+  html = upsertTag(html, metaProp("og:type"), `<meta property="og:type" content="article" />`);
+  html = upsertTag(html, metaProp("og:url"), `<meta property="og:url" content="${attrEscape(url)}" />`);
+  html = upsertTag(html, metaProp("og:site_name"), `<meta property="og:site_name" content="${attrEscape(siteName)}" />`);
+  if (image) html = upsertTag(html, metaProp("og:image"), `<meta property="og:image" content="${attrEscape(image)}" />`);
+  html = upsertTag(html, metaName("twitter:card"), `<meta name="twitter:card" content="${image ? "summary_large_image" : "summary"}" />`);
+  html = upsertTag(html, metaName("twitter:title"), `<meta name="twitter:title" content="${attrEscape(title)}" />`);
+  html = upsertTag(html, metaName("twitter:description"), `<meta name="twitter:description" content="${attrEscape(desc)}" />`);
+  if (image) html = upsertTag(html, metaName("twitter:image"), `<meta name="twitter:image" content="${attrEscape(image)}" />`);
+  html = upsertTag(html, `<link\\s+rel="canonical"[^>]*?/?>`, `<link rel="canonical" href="${attrEscape(url)}" />`);
+
+  const ld = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: entry.title,
+    description: desc,
+    url,
+    mainEntityOfPage: url,
+    author: { "@type": "Person", name: author },
+  };
+  if (iso) ld.datePublished = iso;
+  if (entry.updated && toISODate(entry.updated)) ld.dateModified = toISODate(entry.updated);
+  if (image) ld.image = image;
+  if (entry.tag) ld.keywords = String(entry.tag).split("·").map((t) => t.trim()).filter(Boolean).join(", ");
+  // JSON inside <script>: make "</script>" and "<!--" impossible
+  const ldJson = JSON.stringify(ld).replace(/</g, "\\u003c");
+  html = html.replace(/<\/head>/i, () => `    <script type="application/ld+json">${ldJson}</script>\n    </head>`);
+
+  // jump to this post inside the app (only when the URL has no #route yet)
+  const route = `#/${pageSlug}/${entry.slug}`;
+  const boot = `<script>if(!location.hash||location.hash==="#"||location.hash==="#/"){try{history.replaceState(null,"",location.pathname+location.search+${JSON.stringify(route)})}catch(e){location.hash=${JSON.stringify(route)}}}</script>`;
+  html = html.replace(/<head>/i, () => `<head>\n        ${boot}`);
+
+  // article text for crawlers / link scrapers (the app replaces it on load)
+  const metaRows = entry.meta
+    ? `<ul>${Object.entries(entry.meta).map(([k, v]) => `<li><strong>${xmlEscape(k)}:</strong> ${xmlEscape(v)}</li>`).join("")}</ul>`
+    : "";
+  const article = `<article class="seo-article"><h1>${xmlEscape(entry.title)}</h1><p>${xmlEscape(entry.date)}${entry.tag ? " · " + xmlEscape(entry.tag) : ""}</p>${metaRows}${renderMarkdownSafe(entry.body || "")}</article>`;
+  html = html.replace(/<main id="app"([^>]*)>\s*<\/main>/i, (m, attrs) => `<main id="app"${attrs}>${article}</main>`);
+
+  return { file, url, html, iso, entry, kind, pageSlug };
+}
+
+function rfc822(iso) {
+  const d = new Date((iso || "") + "T00:00:00Z");
+  return isNaN(d) ? null : d.toUTCString();
+}
+
+// <link rel="alternate" type="application/rss+xml"> in index.html, between
+// markers, only while a feed actually exists (so feed readers can auto-detect it)
+function syncFeedLink(feedHref, title) {
+  if (!fs.existsSync(INDEX_FILE)) return;
+  const html = fs.readFileSync(INDEX_FILE, "utf8");
+  let next = html.replace(/[ \t]*<!-- seo:feed -->[\s\S]*?<!-- \/seo:feed -->\r?\n?/g, "");
+  if (feedHref) {
+    const tag = `        <!-- seo:feed --><link rel="alternate" type="application/rss+xml" title="${attrEscape(title)}" href="${attrEscape(feedHref)}" /><!-- /seo:feed -->\n`;
+    next = next.replace(/[ \t]*<\/head>/i, (m) => tag + m);
+  }
+  if (next !== html) fs.writeFileSync(INDEX_FILE, next, "utf8");
+}
+
+function generateSeo(data) {
+  if (process.env.MANAGE_NO_SEO) return { skipped: "disabled" };
+  const cfg = loadSiteConfig();
+  const log = (m) => console.log(`  seo: ${m}`);
+
+  // remove what we generated last time
+  let previous = [];
+  try {
+    previous = JSON.parse(fs.readFileSync(SEO_MANIFEST, "utf8")).files || [];
+  } catch (e) {}
+  const cleanup = (keep) => {
+    for (const f of previous) {
+      if (keep.has(f) || /[\\/]/.test(f)) continue;
+      try {
+        fs.unlinkSync(path.join(ROOT_DIR, f));
+      } catch (e) {}
+    }
+  };
+
+  const siteUrl = cfg && cfg.site && cfg.site.url ? String(cfg.site.url).trim().replace(/\/+$/, "") : "";
+  if (!cfg || !siteUrl) {
+    syncFeedLink(null);
+    cleanup(new Set());
+    try {
+      fs.unlinkSync(SEO_MANIFEST);
+    } catch (e) {}
+    return { skipped: "no site.url" };
+  }
+  if (!/^https?:\/\/[^\s/]+/i.test(siteUrl)) {
+    console.warn(`  seo: site.url "${siteUrl}" is not a valid http(s) address — skipped`);
+    return { skipped: "bad site.url" };
+  }
+  if (!fs.existsSync(INDEX_FILE)) return { skipped: "no index.html" };
+
+  const feedCfgEarly = (cfg.site && cfg.site.feed) || {};
+  syncFeedLink(
+    feedCfgEarly.enabled !== false ? "feed.xml" : null,
+    feedCfgEarly.title || (cfg.site && (cfg.site.name || cfg.site.brand)) || "RSS",
+  );
+  const template = fs.readFileSync(INDEX_FILE, "utf8");
+  const pages = [];
+  for (const w of data.WRITEUPS || []) pages.push(buildStubPage(template, cfg, "writeups", w, siteUrl));
+  for (const p of data.PROJECTS || []) pages.push(buildStubPage(template, cfg, "projects", p, siteUrl));
+
+  // two entries mapping to the same file name would overwrite each other
+  const seen = new Map();
+  for (const pg of pages) {
+    if (seen.has(pg.file)) console.warn(`  seo: "${pg.entry.title}" and "${seen.get(pg.file)}" both map to ${pg.file}`);
+    seen.set(pg.file, pg.entry.title);
+  }
+
+  const keep = new Set(pages.map((p) => p.file));
+  for (const pg of pages) fs.writeFileSync(path.join(ROOT_DIR, pg.file), pg.html, "utf8");
+  cleanup(keep);
+
+  // ---- sitemap.xml
+  const today = new Date().toISOString().slice(0, 10);
+  const urls = [`  <url><loc>${xmlEscape(siteUrl + "/")}</loc><lastmod>${today}</lastmod></url>`];
+  for (const pg of pages) {
+    const mod = (pg.entry.updated && toISODate(pg.entry.updated)) || pg.iso;
+    urls.push(`  <url><loc>${xmlEscape(pg.url)}</loc>${mod ? `<lastmod>${mod}</lastmod>` : ""}</url>`);
+  }
+  fs.writeFileSync(
+    path.join(ROOT_DIR, "sitemap.xml"),
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`,
+    "utf8",
+  );
+
+  // ---- feed.xml (RSS 2.0)
+  const feedCfg = (cfg.site && cfg.site.feed) || {};
+  const feedOn = feedCfg.enabled !== false;
+  if (feedOn) {
+    const siteName = cfg.site.name || cfg.site.brand || "";
+    const items = pages
+      .slice()
+      .sort((a, b) => String(b.iso || "").localeCompare(String(a.iso || "")))
+      .slice(0, 50)
+      .map((pg) => {
+        const pub = rfc822(pg.iso);
+        return [
+          "    <item>",
+          `      <title>${xmlEscape(pg.entry.title)}</title>`,
+          `      <link>${xmlEscape(pg.url)}</link>`,
+          `      <guid isPermaLink="true">${xmlEscape(pg.url)}</guid>`,
+          pub ? `      <pubDate>${pub}</pubDate>` : "",
+          pg.entry.tag ? `      <category>${xmlEscape(pg.entry.tag)}</category>` : "",
+          `      <description>${xmlEscape(pg.entry.excerpt || "")}</description>`,
+          "    </item>",
+        ]
+          .filter(Boolean)
+          .join("\n");
+      });
+    const feed = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>${xmlEscape(feedCfg.title || siteName)}</title>
+    <link>${xmlEscape(siteUrl + "/")}</link>
+    <description>${xmlEscape(feedCfg.description || cfg.site.description || "")}</description>
+    <language>${xmlEscape(cfg.site.language || "en")}</language>
+    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+    <atom:link href="${xmlEscape(siteUrl + "/feed.xml")}" rel="self" type="application/rss+xml" />
+${items.join("\n")}
+  </channel>
+</rss>
+`;
+    fs.writeFileSync(path.join(ROOT_DIR, "feed.xml"), feed, "utf8");
+  } else {
+    try {
+      fs.unlinkSync(path.join(ROOT_DIR, "feed.xml"));
+    } catch (e) {}
+  }
+
+  // ---- robots.txt: keep exactly one Sitemap line
+  const robotsFile = path.join(ROOT_DIR, "robots.txt");
+  let robots = fs.existsSync(robotsFile) ? fs.readFileSync(robotsFile, "utf8") : "User-agent: *\nAllow: /\n";
+  robots = robots.replace(/^\s*Sitemap:.*\r?\n?/gim, "").replace(/\s+$/, "") + `\n\nSitemap: ${siteUrl}/sitemap.xml\n`;
+  fs.writeFileSync(robotsFile, robots, "utf8");
+
+  fs.writeFileSync(SEO_MANIFEST, JSON.stringify({ generatedBy: "manage.js seo", files: [...keep].sort() }, null, 2) + "\n", "utf8");
+  log(`${pages.length} post page(s), sitemap.xml${feedOn ? ", feed.xml" : ""}  →  ${siteUrl}`);
+  return { pages: pages.length, feed: feedOn, url: siteUrl };
+}
+
 // SYNC: Read all files in content/ and write data.js
 function syncContent() {
   ensureDirs();
 
-  // 1. Scan Writeups
-  const writeupFiles = findFilesRecursive(WRITEUPS_DIR);
-  const writeups = [];
-  for (const file of writeupFiles) {
-    const raw = fs.readFileSync(file, "utf8");
-    const { meta, body } = parseFrontmatter(raw);
-    const slug = meta.slug || path.basename(file, ".md");
-    const title = meta.title || extractHeading(body) || slug;
-    const tag = meta.tag || "general";
-    const date = meta.date || new Date().toISOString().slice(0, 7);
-    let pills = meta.pills || [];
-    if (typeof pills === "string")
-      pills = pills
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-    const excerpt =
-      meta.excerpt ||
-      body
-        .split("\n\n")[0]
-        .replace(/^#+\s+/g, "")
-        .slice(0, 160) + "...";
-
-    writeups.push({
-      title,
-      tag,
-      date,
-      excerpt,
-      pills,
-      slug,
-      body,
-    });
-  }
-  writeups.sort((a, b) => String(b.date).localeCompare(String(a.date)));
-
-  // 2. Scan Projects
-  const projectFiles = findFilesRecursive(PROJECTS_DIR);
-  const projects = [];
-  for (const file of projectFiles) {
-    const raw = fs.readFileSync(file, "utf8");
-    const { meta, body } = parseFrontmatter(raw);
-    const slug = meta.slug || path.basename(file, ".md");
-    const title = meta.title || extractHeading(body) || slug;
-    const tag = meta.tag || "project";
-    const date = meta.date || new Date().toISOString().slice(0, 7);
-    let pills = meta.pills || [];
-    if (typeof pills === "string")
-      pills = pills
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-    const excerpt =
-      meta.excerpt ||
-      body
-        .split("\n\n")[0]
-        .replace(/^#+\s+/g, "")
-        .slice(0, 160) + "...";
-
-    projects.push({
-      title,
-      tag,
-      date,
-      excerpt,
-      pills,
-      slug,
-      body,
-    });
-  }
-  projects.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  // 1 + 2. Scan writeups and projects (drafts are skipped)
+  const wr = readEntries(WRITEUPS_DIR, "general");
+  const pr = readEntries(PROJECTS_DIR, "project");
+  const writeups = wr.entries;
+  const projects = pr.entries;
 
   // 3. Scan Notes (file paths define recursive folder structure!)
   const noteFiles = findFilesRecursive(NOTES_DIR);
@@ -349,6 +744,13 @@ if (typeof module !== 'undefined' && module.exports) {
 
   fs.writeFileSync(DATA_FILE, output, "utf8");
 
+  let seo = null;
+  try {
+    seo = generateSeo({ WRITEUPS: writeups, PROJECTS: projects });
+  } catch (e) {
+    console.warn("  seo: failed —", e.message);
+  }
+
   let allFoldersCount = 0;
   function countFolders(tree) {
     for (const item of tree) {
@@ -363,6 +765,8 @@ if (typeof module !== 'undefined' && module.exports) {
     projectsCount: projects.length,
     notesCount: noteFiles.length,
     foldersCount: allFoldersCount,
+    draftsSkipped: wr.drafts + pr.drafts,
+    seo,
   };
 }
 
@@ -392,14 +796,7 @@ function exportFromDataJs() {
     if (!slug) throw new Error("Writeup title or slug must contain a letter or number");
     const dest = path.join(WRITEUPS_DIR, `${slug}.md`);
     if (!fs.existsSync(dest)) {
-      const meta = {
-        title: w.title,
-        tag: w.tag,
-        date: w.date,
-        excerpt: w.excerpt,
-        pills: w.pills,
-        slug,
-      };
+      const meta = frontmatterFor(w, slug);
       fs.writeFileSync(dest, serializeFrontmatter(meta, w.body), "utf8");
       exportedWriteups++;
     }
@@ -411,14 +808,7 @@ function exportFromDataJs() {
     if (!slug) throw new Error("Project title or slug must contain a letter or number");
     const dest = path.join(PROJECTS_DIR, `${slug}.md`);
     if (!fs.existsSync(dest)) {
-      const meta = {
-        title: p.title,
-        tag: p.tag,
-        date: p.date,
-        excerpt: p.excerpt,
-        pills: p.pills,
-        slug,
-      };
+      const meta = frontmatterFor(p, slug);
       fs.writeFileSync(dest, serializeFrontmatter(meta, p.body), "utf8");
       exportedProjects++;
     }
@@ -615,6 +1005,13 @@ async function interactiveAddWriteup() {
   const slug = safeContentSlug(
     await ask(rl, "Slug (URL identifier)", defaultSlug),
   );
+  console.log("CTF details (all optional — press Enter to skip):");
+  const extraAnswers = {
+    ctf: await ask(rl, "  CTF / event name", ""),
+    category: await ask(rl, "  Category (pwn, web, rev...)", ""),
+    points: await ask(rl, "  Points", ""),
+    difficulty: await ask(rl, "  Difficulty", ""),
+  };
   const importFile = await ask(
     rl,
     "Import from existing .md file (leave empty for template)",
@@ -629,7 +1026,7 @@ async function interactiveAddWriteup() {
   }
 
   const destFile = path.join(WRITEUPS_DIR, `${slug}.md`);
-  const meta = { title, tag, date, excerpt, pills, slug };
+  const meta = { title, tag, date, excerpt, pills, slug, ...extraMetaFrom(extraAnswers) };
   fs.writeFileSync(destFile, serializeFrontmatter(meta, body), "utf8");
 
   rl.close();
@@ -825,7 +1222,7 @@ function launchUI(port = 8088) {
       req.on("data", (chunk) => (body += chunk));
       req.on("end", () => {
         try {
-          const { title, tag, date, pills, excerpt, slug, content } =
+          const { title, tag, date, pills, excerpt, slug, content, extra, draft } =
             JSON.parse(body);
           const finalSlug = slugify(slug || title);
           if (!finalSlug) throw new Error("Title or slug required");
@@ -842,7 +1239,9 @@ function launchUI(port = 8088) {
                   .map((s) => s.trim())
                   .filter(Boolean),
             slug: finalSlug,
+            ...parseExtraText(extra),
           };
+          if (draft) meta.draft = "true";
           fs.writeFileSync(dest, serializeFrontmatter(meta, content), "utf8");
           syncContent();
           res.writeHead(200, { "Content-Type": "application/json" });
@@ -1061,6 +1460,7 @@ function renderForm() {
     const excerpt = activeItem?.excerpt || '';
     const slug = activeItem?.slug || '';
     const body = activeItem?.body || '## Summary\\n\\nWrite content here...';
+    const extraMeta = activeItem?.meta ? Object.entries(activeItem.meta).map(([k, v]) => k + ': ' + v).join('\\n') : '';
 
     container.innerHTML = \`
       <h2 style="font-family:var(--mono); margin-bottom:20px; font-size:24px;">\${activeItem?.isNew ? ('NEW ' + currentTab.toUpperCase().slice(0,-1)) : ('EDIT ' + currentTab.toUpperCase().slice(0,-1))}</h2>
@@ -1089,6 +1489,13 @@ function renderForm() {
       <div class="form-group">
         <label>SLUG (URL IDENTIFIER):</label>
         <input type="text" id="item-slug" value="\${escapeHTML(slug)}" placeholder="auto-generated-if-empty">
+      </div>
+      <div class="form-group">
+        <label>EXTRA DETAILS (one "key: value" per line — e.g. ctf, category, points, difficulty):</label>
+        <textarea id="item-extra" style="min-height:90px;" placeholder="ctf: PicoCTF 2026&#10;category: pwn&#10;points: 500&#10;difficulty: hard">\${escapeHTML(extraMeta)}</textarea>
+      </div>
+      <div class="form-group">
+        <label><input type="checkbox" id="item-draft" style="width:auto; margin-right:8px;"> DRAFT (keep out of the site until unchecked)</label>
       </div>
       <div class="form-group">
         <label>MARKDOWN CONTENT:</label>
@@ -1131,6 +1538,8 @@ async function saveItem() {
   const excerpt = document.getElementById('item-excerpt').value.trim();
   let slug = document.getElementById('item-slug').value.trim();
   const content = document.getElementById('item-body').value;
+  const extra = document.getElementById('item-extra').value;
+  const draft = document.getElementById('item-draft').checked;
   if (!slug) slug = title.toLowerCase().replace(/[^\\w\\s-]/g, '').replace(/[\\s_-]+/g, '-');
   if (!title) { alert('Title is required'); return; }
 
@@ -1138,7 +1547,7 @@ async function saveItem() {
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, tag, date, pills, excerpt, slug, content })
+    body: JSON.stringify({ title, tag, date, pills, excerpt, slug, content, extra, draft })
   });
   if (res.ok) {
     showStatus();
@@ -1184,6 +1593,24 @@ async function main() {
     console.log(
       `  - Notes:    ${stats.notesCount} across ${stats.foldersCount} folders`,
     );
+    if (stats.draftsSkipped) console.log(`  - Drafts skipped: ${stats.draftsSkipped}`);
+    if (stats.seo && stats.seo.skipped === "no site.url")
+      console.log(
+        "  - SEO: skipped. Set site.url in config.js (e.g. \"https://you.github.io\") to generate\n    per-post pages, sitemap.xml and feed.xml.",
+      );
+    return;
+  }
+
+  if (cmd === "seo") {
+    const data = loadDataFile();
+    const res = generateSeo(data);
+    if (res.skipped) {
+      console.log(
+        res.skipped === "no site.url"
+          ? 'SEO skipped: set site.url in config.js (e.g. "https://you.github.io") first.'
+          : `SEO skipped: ${res.skipped}`,
+      );
+    }
     return;
   }
 
@@ -1284,6 +1711,7 @@ async function main() {
           pills: flags.pills ? flags.pills.split(",") : ["CTF"],
           slug,
         };
+        applyFlagMeta(meta, flags);
         const dest = path.join(WRITEUPS_DIR, `${slug}.md`);
         fs.writeFileSync(dest, serializeFrontmatter(meta, body), "utf8");
         syncContent();
@@ -1311,6 +1739,7 @@ async function main() {
           pills: flags.pills ? flags.pills.split(",") : ["Project"],
           slug,
         };
+        applyFlagMeta(meta, flags);
         const dest = path.join(PROJECTS_DIR, `${slug}.md`);
         fs.writeFileSync(dest, serializeFrontmatter(meta, body), "utf8");
         syncContent();
