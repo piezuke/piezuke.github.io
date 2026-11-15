@@ -54,6 +54,18 @@ const CONFIG = {
     arrow: "↗",
     renderError: "Render Error",
 
+    // Cover picture shown on cards, the home-page tiles and at the top of
+    // articles. Put your own image or GIF in media/ and point `image` at it.
+    //   image    : path or full URL to any image (.webp .png .jpg .gif). "" = no covers at all.
+    //   position : which part stays visible when the picture is cropped,
+    //              e.g. "center", "top", "left 30%".
+    // A single post can use its own picture: add  image: media/my-pic.gif
+    // to that post's front-matter and it replaces this default for that post.
+    covers: {
+      image: "media/cover.webp",
+      position: "center",
+    },
+
     search: {
       key: "⌘",
       buttonText: "search everything",
@@ -76,11 +88,18 @@ const CONFIG = {
 
     loader: {
       // Minimum time (milliseconds) the loading screen stays up when the site first
-      // opens. 2000 = 2 seconds. 0 = as short as possible.
-      minDuration: 2000,
-      // ...and when you click to another page. Shorter feels better on repeat visits;
-      // set it to 2000 if you want the full loading screen every time.
-      pageChangeDuration: 600,
+      // opens. 700 = 0.7 seconds. 0 = as short as possible.
+      minDuration: 700,
+      // ...and when you click to another page. 0 = swap instantly (fastest).
+      pageChangeDuration: 500,
+      // The loading screen also waits for the web fonts and the pictures that are on
+      // screen (on first load and on every page change), so nothing pops in late.
+      waitForImages: true,
+      // ...but never longer than this, even if something is still loading.
+      maxDuration: 6000,
+      // If the loading screen is still up after this long, its text changes to `slow`.
+      slowAfter: 3500,
+      slow: "Taking longer than usual... still on it.",
       // Browser Back / Forward buttons skip the loading screen entirely.
       skipOnBackForward: true,
       initial: "Connecting to PIE's Archives...",
@@ -89,7 +108,6 @@ const CONFIG = {
         "bluh bluh bluh bluh....",
         "buh buh buh buh....",
         "fweh fweh fweh fweh....",
-        "pluh{0MG_pr0ud_0f_y0u_wh0ever_y0ur}",
       ],
     },
 
@@ -144,6 +162,18 @@ const CONFIG = {
   footer: {
     quip: "Coffee Waaaay better than tea. Ainnobody tellin me otherwise.",
     text: "© {year} piezuke. All rights reserved.",
+
+    // Big call-to-action at the top of the footer. The button opens the first
+    // contact (in pages.about.contacts) whose icon is "email"; no email = no button.
+    ctaHeading: "Say hi.",
+    ctaText: "Questions, collabs, or a CTF that needs another teammate? My inbox is open.",
+    ctaButton: "Send an email",
+
+    // Column headings (the columns are built from your nav, latest writeups and contacts)
+    navHeading: "Explore",
+    latestHeading: "Latest writeups",
+    socialsHeading: "Elsewhere",
+
   },
 
   /* ------------------------------ PAGES ------------------------------ */
@@ -298,7 +328,7 @@ const CONFIG = {
       flags: {
         enabled: true,
         hint: "click to reveal",
-        prefixes: ["flag", "ctf", "bi0s", "teambi0s", "pico", "picoctf", "htb", "thm", "pluh"],
+        prefixes: ["flag", "ctf", "bi0s", "teambi0s", "pico", "picoctf", "htb", "thm"],
         generic: true, // also blur anything shaped like  word{something-long}
       },
     },
@@ -436,52 +466,6 @@ const CONFIG = {
     },
     // { title: "Track 01", artist: "Artist", src: "media/track01.mp3" }
     playlist: [],
-  },
-
-  /* --------------------------- FLAG HUNT (fun) --------------------------- */
-  // Hidden flags scattered around the site. Found one? Open the search box
-  // (press "/" or Ctrl+K) and paste it. Type "flags" to see progress and hints.
-  easterEggs: {
-    enabled: true,
-    storageKey: "pie-flags", // progress is remembered in this browser only
-    toast: {
-      found: "flag found → {flag}",
-      again: "you already have that one",
-      wrong: "not a flag I know. keep hunting.",
-      progress: "{found}/{total} flags",
-      all: "all {total} flags. you are the pwner now.",
-    },
-    labels: {
-      commandTag: "cmd",
-      flagTag: "flag",
-      submit: "submit this flag",
-      flagsTitle: "{found}/{total} flags found",
-      hintPrefix: "hint",
-      foundMark: "✓",
-    },
-    consoleArt: ["  ___ ___ ___", " | _ \\_ _| __|", " |  _/| || _|", " |_| |___|___|"],
-    consoleMessage:
-      "hey, curious one. flag #1 is free: {flag}   — press / on the page and paste it into the search box.",
-    // `id`s are used by the code, so don't rename them. Change the flags and hints freely.
-    // (The "source" flag also lives, base64-encoded, in a comment in index.html.)
-    flags: [
-      { id: "console", flag: "pluh{c0ns0le_g0blin_sp0tted}", hint: "the browser has a developer console. open it." },
-      { id: "konami", flag: "pluh{up_up_d0wn_d0wn_l_r_l_r_b_a}", hint: "an old cheat code. 1986. Konami." },
-      { id: "avatar", flag: "pluh{st0p_p0king_my_f4ce}", hint: "poke the profile picture. a lot.", clicks: 7 },
-      { id: "command", flag: "pluh{sudo_make_me_a_sandwich}", hint: "the search box understands more than it lets on. try typing help." },
-      { id: "source", flag: "pluh{v13w_s0urc3_l1k3_a_pr0}", hint: "read the page source. base64 is not encryption." },
-      { id: "loader", flag: "pluh{0MG_pr0ud_0f_y0u_wh0ever_y0ur}", hint: "be patient on the loading screen." },
-    ],
-    // typed into the search box. `flag: "<id>"` awards that flag.
-    commands: [
-      { input: "help", output: "try: whoami · ls · cat flag.txt · sudo · flags" },
-      { input: "whoami", output: "a curious human (probably)" },
-      { input: "ls", output: "flag.txt  secrets/  definitely-not-a-flag.png" },
-      { input: "cat flag.txt", output: "permission denied. maybe ask nicely? (sudo ...)" },
-      { input: "sudo", output: "nice try. you are not in the sudoers file. this incident will be reported." },
-      { input: "sudo make me a sandwich", output: "okay.", flag: "command" },
-      { input: "rm -rf /", output: "bold. but no." },
-    ],
   },
 
   /* ------------------------------ CURSOR ------------------------------ */

@@ -69,11 +69,9 @@ describe("hosting files", () => {
     assert.match(y, /path: dist/);
     assert.match(y, /cancel-in-progress: false/, "a running deployment is never cancelled mid-way");
     assert.match(y, /find content -name '\*\.md'/, "guard: an empty content/ never wipes a committed data.js");
-    assert.match(y, /actions\/deploy-pages@v4/);
-    assert.ok(!/cp [^\n]*_headers/.test(y), "GitHub Pages can't use _headers, so it isn't published");
-    const cpLines = y.split("\n").filter((l) => /^\s*cp /.test(l)).join("\n");
-    for (const private_ of ["content", "manage.js", "tests", "node_modules", "package.json"]) assert.ok(!cpLines.includes(private_), `workflow must not publish ${private_}`);
-    assert.ok(cpLines.includes("data.js") && cpLines.includes("index.html"));
+    assert.match(y, /actions\/deploy-pages@[0-9a-f]{40} # v4/, "deploy-pages is pinned to a commit");
+    assert.match(y, /node build\.js --out dist/, "the site is assembled by build.js (which publishes only website files; see build.test.js)");
+    assert.ok(!/cp [^\n]*(?:_headers|content|manage\.js|tests|node_modules|package\.json)/.test(y), "no hand-written copy of private files into the published folder");
   });
 
   test("package.json: `npm test` runs the suite; the site has no runtime dependencies", () => {
@@ -109,9 +107,9 @@ describe("the static shell", () => {
   test("loads every script it needs, in a working order", () => {
     const order = [...read("index.html").matchAll(/<script defer src="([^"]+)"/g)].map((m) => m[1]);
     const idx = (n) => order.indexOf(n);
-    for (const f of ["config.js", "js/configcheck.js", "data.js", "js/player.js", "js/canvas.js", "js/highlight.js", "js/app.js", "js/cmdk.js", "js/eggs.js"]) assert.ok(idx(f) >= 0, `${f} is not loaded`);
+    for (const f of ["config.js", "js/configcheck.js", "data.js", "js/player.js", "js/canvas.js", "js/highlight.js", "js/app.js", "js/cmdk.js"]) assert.ok(idx(f) >= 0, `${f} is not loaded`);
     assert.ok(idx("config.js") < idx("js/app.js") && idx("js/highlight.js") < idx("js/app.js"));
-    assert.ok(idx("js/app.js") < idx("js/cmdk.js") && idx("js/cmdk.js") < idx("js/eggs.js"), "app -> palette -> flag hunt");
+    assert.ok(idx("js/app.js") < idx("js/cmdk.js"), "app -> palette");
     for (const f of order) assert.ok(exists(f), `${f} listed in index.html but missing`);
   });
 

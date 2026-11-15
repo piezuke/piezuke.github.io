@@ -9,8 +9,6 @@
  *   #pwn  /  #pwn heap  filter by tag, optionally combined with words
  *
  * Results highlight the match and show a snippet of surrounding text.
- * Other scripts can add results by pushing a function onto
- * window.PaletteProviders: fn(query) -> [{ title, snippet?, tag?, run() }].
  */
 (function () {
   "use strict";
@@ -30,7 +28,6 @@
       ? [routeOf(page).replace(/\/$/, ""), ...rest].join("/")
       : "/" + [page, ...rest].join("/");
 
-  window.PaletteProviders = window.PaletteProviders || [];
 
   let index = null; // built on first open (and rebuilt if content changes)
   let shown = []; // result descriptors currently on screen
@@ -221,22 +218,6 @@
     const list = index || buildIndex();
     const { tags, terms } = parseQuery(query);
     const out = [];
-
-    // plug-ins first (commands, flag submissions...)
-    for (const fn of window.PaletteProviders) {
-      try {
-        const extra = fn(query) || [];
-        for (const x of extra) {
-          out.push({
-            type: "action",
-            titleHtml: esc(x.title),
-            snippetHtml: x.snippet ? esc(x.snippet) : "",
-            tag: x.tag || "",
-            run: x.run,
-          });
-        }
-      } catch (e) {}
-    }
 
     const q = String(query || "").trim();
     let scored;

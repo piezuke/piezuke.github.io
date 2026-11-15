@@ -2,8 +2,14 @@ name: Test & deploy
 
 # Setup (once): repository Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
 # Then every push to main runs the tests, rebuilds data.js / per-post pages / sitemap / feed
-# from content/, and publishes ONLY the site files (never content/ or manage.js - so
-# unpublished drafts are not put on the website).
+# from content/, minifies + fingerprints the site (node build.js) and publishes ONLY the
+# built site files (never content/ or manage.js - so unpublished drafts are not put on the website).
+#
+# Security notes
+#  - every action is pinned to a commit SHA (the comment shows the tag it came from), so a moved
+#    or hijacked tag cannot change what runs here. Dependabot (see ../dependabot.yml) proposes updates.
+#  - each job gets only the permissions it needs; the test job cannot publish anything.
+#  - `npm ci --ignore-scripts`: dependencies are installed without running their install scripts.
 
 on:
   push:
@@ -13,8 +19,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # let a running deployment finish; newer pushes queue behind it
 concurrency:
@@ -24,27 +28,39 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm test
 
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
 
       - name: Build content (data.js, per-post pages, sitemap.xml, feed.xml)
         run: |
@@ -57,19 +73,12 @@ jobs:
             node manage.js seo
           fi
 
-      - name: Assemble the site folder (only files that belong on the website)
-        run: |
-          mkdir dist
-          cp index.html 404.html style.css fonts.css config.js data.js marked.min.js robots.txt dist/
-          cp -r js media fonts dist/
-          for f in *.html; do cp "$f" dist/; done          # includes the generated per-post pages
-          cp *.xml dist/ 2>/dev/null || true               # sitemap.xml, feed.xml
-          cp -r .well-known dist/ 2>/dev/null || true
-          touch dist/.nojekyll                              # serve files exactly as built
+      - name: Build the site (copy, minify, fingerprint, service worker)
+        run: node build.js --out dist
 
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
           path: dist
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

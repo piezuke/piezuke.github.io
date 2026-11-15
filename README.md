@@ -1,6 +1,6 @@
 # piezuke_ — CTF writeups, projects, notes & timeline
 
-A single-page, black-and-white blog with pixel-block clouds, rain, a light/dark switch and a ring cursor. There is **no build step and no framework** — the site is plain HTML, CSS and JavaScript. `manage.js` is an optional Node.js tool that turns Markdown files into site content (and generates the SEO files).
+A single-page, black-and-white blog with pixel-block clouds, rain, a light/dark switch and an optional ring cursor. There is **no build step and no framework** — the site is plain HTML, CSS and JavaScript. `manage.js` is an optional Node.js tool that turns Markdown files into site content (and generates the SEO files).
 
 - **Every piece of text lives in `config.js`**, one block per page ([details](#customising-the-site-configjs)).
 - Writeups, projects and notes are Markdown files in `content/`, compiled into `data.js` by `manage.js`.
@@ -121,7 +121,7 @@ A note's file path defines its place in the sidebar's folder tree.
 | Public address (enables SEO files)        | `site.url`, `site.author`, `site.feed`                   |
 | A page's URL (e.g. `/me` → `/about`)      | `routes.about` (keep old links alive with `routes.redirects`) |
 | Nav links and labels                      | `nav.links`                                              |
-| **Loading screen timing**                 | `ui.loader.minDuration` (first visit), `ui.loader.pageChangeDuration` (clicking around), `ui.loader.skipOnBackForward` |
+| **Loading screen**                        | `ui.loader.minDuration`, `ui.loader.pageChangeDuration`, `ui.loader.maxDuration`, `ui.loader.slowAfter`, `ui.loader.slow`, `ui.loader.waitForImages`, `ui.loader.skipOnBackForward` |
 | Loading screen messages                   | `ui.loader.initial`, `ui.loader.labels`                  |
 | Home hero, typed roles, buttons, cards    | `pages.home`                                             |
 | Writeups / Projects headings & messages   | `pages.writeups`, `pages.projects`                       |
@@ -135,7 +135,6 @@ A note's file path defines its place in the sidebar's folder tree.
 | Code block options                        | `ui.code`                                                |
 | Footer lines                              | `footer`                                                 |
 | Music labels and playlist                 | `music`                                                  |
-| Hidden flag hunt                          | `easterEggs`                                             |
 | Cursor style                              | `cursor`                                                 |
 
 **Placeholders** usable inside text: `{year}`, `{site}`, `{page}`, `{n}` (a count) and `{query}` (a search term). Counts have a singular form too (`entries` / `entriesOne`).
@@ -151,7 +150,7 @@ A note's file path defines its place in the sidebar's folder tree.
 ## Features
 
 ### Loading screen
-A video + loading bar covers the first load and every page change. `ui.loader.minDuration` (default 2000 ms) is the **minimum** on first load; `ui.loader.pageChangeDuration` (default 600 ms) applies when clicking to another page. The new page is rendered behind it, so nothing pops in, and a second navigation restarts the timer instead of stacking. The browser's **Back/Forward** buttons skip it entirely (`skipOnBackForward`). Moving between notes never shows it. It's announced to screen readers as "Loading".
+A video + loading bar covers the first load **and every page change**. `ui.loader.minDuration` (default 700 ms) is the minimum on first load; `ui.loader.pageChangeDuration` (default 500 ms) applies when you click to another page (0 = swap instantly). The new page is rendered behind the loading screen, so nothing pops in, and a second click restarts the timer instead of stacking. The loading screen also **waits for the web fonts and the pictures that are on screen** (`ui.loader.waitForImages`), but never longer than `ui.loader.maxDuration` (default 6000 ms) so a broken image can't trap anyone. If it is still up after `ui.loader.slowAfter` (default 3500 ms), its text changes to `ui.loader.slow`. The browser's **Back/Forward** buttons skip the loading screen (`ui.loader.skipOnBackForward`).
 
 ### Light / dark mode
 A sliding sun/moon switch. It follows your operating system until you click it, then remembers your choice and stays in sync across tabs. Browsers that support it get a circular reveal animation (`prefers-reduced-motion` gets an instant flip). A tiny inline script sets the theme before first paint, so there's no flash. Everything stays pure black & white.
@@ -169,6 +168,8 @@ Searches pages, writeups, projects and **every note at any folder depth — incl
 - Arrow keys / Enter / Esc. Announced as a combobox with a listbox of options.
 
 ### Cursor (`js/cursor.js`)
+The default is `"ring"`: a ring that sits exactly on the pointer, swells over clickable things and glows softly. Set `cursor: "off"` in `config.js` for the normal system cursor, or `"native-ring"` for the ring drawn as the real cursor.
+
 A bold ring that trails the mouse with a little inertia, swells over anything clickable and squeezes on press; a click also sends out a ripple (a few reusable elements, so rapid clicking never adds or removes page elements). Set `cursor` in `config.js`, or test with `?cursor=…` in the address:
 
 | Value           | What you get                                                                       |
@@ -188,9 +189,6 @@ Resizable sidebar (drag the divider; double-click to reset; width is remembered)
 ### Persistent music player
 Lives in the navbar and stays active across page changes. Tracks and labels are in `config.js` → `music` (an empty playlist shows a "dropping soon" placeholder on the About page).
 
-### Flag hunt
-There are flags hidden around the site (config: `easterEggs`). Found one? Press `/` and paste it into the search box; type `flags` there for progress and hints. Progress is stored in your browser only. All flags, hints and messages are editable; set `easterEggs.enabled: false` to remove the whole thing.
-
 ### Accessibility
 Skip-to-content link, labelled navigation with `aria-current`, page changes announced to screen readers, the loader marked busy/hidden correctly, blurred flags reachable and revealable by keyboard, visible focus rings for keyboard use only, alt text on every image, and reduced-motion respected throughout. Text for all of it is in `ui.a11y`.
 
@@ -203,7 +201,7 @@ No browser tap-highlight box; buttons, cards and links get a proper pressed stat
 
 ```
 index.html          page shell, security meta, theme-before-paint script, skip link
-config.js           ALL site text, titles, URL slugs, nav, about/timeline, music, flag hunt, cursor
+config.js           ALL site text, titles, URL slugs, nav, about/timeline, music, cursor
 data.js             writeups, projects, notes (generated by manage.js)
 style.css           design tokens, layout, theme switch, cursor, code colours, touch & mobile rules
 fonts.css, fonts/   self-hosted web fonts (no Google Fonts request)
@@ -212,10 +210,11 @@ js/
 ├── app.js          router, views, notes vault, Markdown rendering, loader, theme, post features
 ├── canvas.js       clouds, rain, splashes, click ripple, frame governor
 ├── cursor.js       ring cursor (ring / native-ring / off)
-├── cmdk.js         search palette: full-text, tag filters, snippets, plug-in hook
+├── cmdk.js         search palette: full-text, tag filters, snippets
+├── fx.js           motion layer: hero intro + dot-matrix field, scroll effects, page wipe, nav pill
+├── gsap.min.js, ScrollTrigger.min.js, SplitText.min.js   animation libraries (GSAP, self-hosted)
 ├── highlight.js    dependency-free syntax highlighter
 ├── configcheck.js  config.js checker (console + ?debug=config)
-├── eggs.js         flag hunt
 └── player.js       persistent audio player
 manage.js           content CLI + local editor + SEO generator
 404.html            standalone redirect / 404 page
@@ -244,7 +243,7 @@ npm install     # once (installs jsdom; `canvas` is optional and only used for t
 npm test
 ```
 
-The suite loads the real `index.html` and scripts in jsdom and checks, among other things: every page and route (including a nearly empty config), that changing config text and URL slugs is followed everywhere, the config checker, the loader timings (first load, page change, Back/Forward, rapid clicks), the light/dark switch, cursor modes and click handling, rain landing on the footer and tab-switch behaviour, syntax highlighting, flag blurring, section links and share links, full-text search and tag filters, the flag hunt, accessibility wiring, and the whole SEO pipeline (run against a scratch copy of the project, including hostile titles and bodies). A shipping test also checks that every config path the code reads exists in `config.js`, that `_headers` matches the page's CSP, and that `security.txt` hasn't expired.
+The suite loads the real `index.html` and scripts in jsdom and checks, among other things: every page and route (including a nearly empty config), that changing config text and URL slugs is followed everywhere, the config checker, the loader timings (first load, page change, Back/Forward, rapid clicks), the light/dark switch, cursor modes and click handling, rain landing on the footer and tab-switch behaviour, syntax highlighting, flag blurring, section links and share links, full-text search and tag filters, accessibility wiring, and the whole SEO pipeline (run against a scratch copy of the project, including hostile titles and bodies). A shipping test also checks that every config path the code reads exists in `config.js`, that `_headers` matches the page's CSP, and that `security.txt` hasn't expired.
 
 ---
 
@@ -280,7 +279,7 @@ A deploy takes about a minute; progress shows under the repo's **Actions** tab. 
 | **~10-minute cache** | GitHub's CDN caches files for about 10 minutes, so a brand-new post (or edited `data.js`) can take that long to appear for people who already loaded the site. Hard-refresh to check. |
 | **Case-sensitive file names** | Windows and macOS ignore letter case, GitHub Pages doesn't: `media/Pfp.webp` loads on your laptop and 404s online. `npm test` checks that every file the site refers to exists with exactly that spelling, and generated post-page names are always lower-case. |
 | **Root-only well-known files** | On a *project site* (`user.github.io/my-repo`), `/robots.txt` and `/.well-known/security.txt` are served from your repo's sub-path, where crawlers and security researchers don't look. They work properly on user/org sites and custom domains. |
-| **No server code** | Everything is static — search, the flag hunt and progress tracking all run in the browser (progress lives in `localStorage`). |
+| **No server code** | Everything is static — search and filtering all run in the browser. |
 | **Soft limits** | Published site ≤ 1 GB and roughly 100 GB/month of bandwidth (GitHub also rate-limits branch-based builds to about 10/hour). Keep `media/` lean — the loader clip is the biggest file. |
 
 ### Optional: Cloudflare in front of a custom domain
@@ -331,3 +330,42 @@ Cloudflare Pages / Netlify work with no build command (or `node manage.js sync`)
 - **Drafts:** never written to `data.js`, the generated pages or the published site (the workflow doesn't publish `content/`). In a *public* repo the draft file itself is still visible on GitHub — see [About drafts](#managejs).
 - **Reporting:** `.well-known/security.txt` (RFC 9116) is included — keep its `Expires` date current (a test fails when it lapses). It is only discoverable on user/org sites and custom domains, not on `user.github.io/repo` project sites.
 - **Crawlers:** `robots.txt` blocks several AI scrapers.
+
+
+## Motion layer
+
+`js/fx.js` drives the animations using GSAP, ScrollTrigger and SplitText (copied into `js/`, so nothing is loaded from a CDN). It adds the split-letter hero intro, the reactive dot-matrix behind the hero (dots swell around your cursor, click for a ripple), the scroll-speed marquee, staggered card reveals, the page-change wipe and the sliding nav pill.
+
+- Everything is skipped when the visitor has "reduce motion" turned on, and the dot field is skipped on very weak devices (2 CPU cores or less, or 2 GB of memory or less).
+- To turn the whole layer off, delete the four `<script defer src="js/...">` lines for `gsap.min.js`, `ScrollTrigger.min.js`, `SplitText.min.js` and `fx.js` in `index.html`. The site then falls back to its simple CSS reveals.
+- GSAP is free to use, including commercially, under its standard licence: https://gsap.com/standard-license
+
+## Cover pictures
+
+Cards, the home-page tiles and article headers show a cover picture.
+
+- **Default for everything:** put your image or GIF in `media/` and set `ui.covers.image` in `config.js` (e.g. `"media/my-cover.gif"`). `media/cover.webp` is just a placeholder; replace it or point the setting somewhere else. Set it to `""` to show no covers at all.
+- **One post only:** add `image: media/my-pic.gif` to that post's front-matter. It then replaces the default for that post (and is also used as its social-preview image).
+- `ui.covers.position` controls which part of the picture stays visible when it gets cropped, e.g. `"top"` or `"left 30%"`.
+
+## Build, speed and offline
+
+The site you edit is plain files with no build step, and you can open it as-is while you work. When it is **deployed**, `node build.js` (run by the GitHub workflow, or by you with `npm run build`) turns it into the `dist/` folder that gets published:
+
+- **Only website files are copied** (never `content/`, `manage.js`, tests or workflow files).
+- **CSS and JavaScript are minified** (about 30% smaller over the wire, and far less code for the phone to parse).
+- **Every script and stylesheet URL gets a content hash** (`style.css?v=3f9a1c2e`). A file that changed is downloaded at once; a file that did not change stays cached. A page can never end up with an old script and a new page.
+- **A service worker (`sw.js`) is generated.** After the first visit, repeat visits are served from the browser's cache (about 1 network request instead of ~25) and the site opens offline. It only touches same-origin GET requests, always tries the network first for pages (so a new post shows up immediately), and is only registered on the built site, never while you develop.
+- The build checks itself: every referenced file exists, every script parses.
+
+To try the built site locally: `npm run build`, then serve the `dist/` folder with any static server. To turn the service worker off, delete the small `serviceWorker` block at the end of `js/app.js`.
+
+Images and video: `media/loader.mp4` and `media/pfp.webp` are re-encoded for the size they are actually shown at. If you replace them, keep them small (the loader video is shown at most 320 px wide).
+
+## Security
+
+- **Content-Security-Policy** (a `<meta>` tag in `index.html`, mirrored in `_headers` for hosts that support headers): scripts may only come from this site, plus the one small inline script that is allowed **by its hash**. There is no `'unsafe-inline'` or `'unsafe-eval'` for scripts, plugins and frames are blocked, and `form-action` / `base-uri` are locked to this site. Because of that, **never add inline handlers** (`onclick="..."`) or new inline `<script>`s; use `addEventListener` or a `data-act` attribute handled in `js/app.js`. If you do edit the inline script in `index.html`, run `npm run csp` to refresh its hash everywhere (a test fails until you do).
+- **Markdown is sanitized**: raw HTML in posts is shown as text, links and images only allow safe schemes, external links get `rel="noopener noreferrer"`, external images send no referrer.
+- **The local editor (`node manage.js gui`)** only listens on 127.0.0.1, rejects requests with a foreign `Host`/`Origin`, and refuses to write outside `content/`.
+- **The deploy workflow** pins every action to a commit SHA, gives each job the minimum permissions (the test job cannot publish), installs dependencies with `--ignore-scripts`, and Dependabot proposes updates to the pins and to the dev dependencies. `npm audit` is clean, and none of the dev dependencies are shipped to visitors.
+- Report problems via `.well-known/security.txt`.

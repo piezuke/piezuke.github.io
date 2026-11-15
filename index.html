@@ -8,7 +8,7 @@
         />
         <meta
             http-equiv="Content-Security-Policy"
-            content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
+            content="default-src 'self'; script-src 'self' 'sha256-FkTHWBuT3P7TYucOCTtOuYrtDFD1HBYVnS/O1uBg9P4='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; media-src 'self'; connect-src 'self'; worker-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
         />
         <meta
             name="format-detection"
@@ -79,13 +79,18 @@
             type="font/woff2"
             crossorigin
         />
+        <link
+            rel="preload"
+            as="font"
+            href="fonts/jersey-25-latin-400-normal.woff2"
+            type="font/woff2"
+            crossorigin
+        />
         <link rel="stylesheet" href="fonts.css" />
         <link rel="stylesheet" href="style.css" />
         <noscript><style>#loader{display:none}</style></noscript>
     </head>
     <body>
-        <!-- you read the source, nice. -->
-        <!-- cGx1aHt2MTN3X3MwdXJjM19sMWszX2FfcHIwfQ== -->
         <a class="skip-link" href="#app" data-cfg="ui.a11y.skipLink">Skip to content</a>
         <div id="sr-announcer" class="sr-only" role="status" aria-live="polite"></div>
         <canvas id="bgcanvas" aria-hidden="true"></canvas>
@@ -268,9 +273,16 @@
 
         <main id="app" tabindex="-1"></main>
         <footer class="global-footer">
-            <div class="wrap footer-silly">
-                <p class="footer-quip" id="cfg-footer-quip"></p>
-                <p class="footer-copy" id="cfg-footer-text"></p>
+            <canvas class="footer-fx" aria-hidden="true"></canvas>
+            <div class="wrap footer-inner">
+                <div class="footer-main">
+                    <div class="footer-cta" id="footer-cta"></div>
+                    <div class="footer-cols" id="footer-cols"></div>
+                </div>
+                <div class="footer-bar">
+                    <p class="footer-copy" id="cfg-footer-text"></p>
+                    <p class="footer-quip" id="cfg-footer-quip"></p>
+                </div>
             </div>
         </footer>
 
@@ -351,6 +363,9 @@
         <script defer src="js/highlight.js"></script>
         <script defer src="js/app.js"></script>
         <script defer src="js/cmdk.js"></script>
-        <script defer src="js/eggs.js"></script>
+        <script defer src="js/gsap.min.js"></script>
+        <script defer src="js/ScrollTrigger.min.js"></script>
+        <script defer src="js/SplitText.min.js"></script>
+        <script defer src="js/fx.js"></script>
     </body>
 </html>

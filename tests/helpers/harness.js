@@ -26,7 +26,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // scripts in the order the page loads them
 function scriptsOf(html) {
-  return [...html.matchAll(/<script\s+defer\s+src="([^"]+)"/g)].map((m) => m[1]);
+  // the built site adds ?v=<hash> to every script URL; the files themselves have no query
+  return [...html.matchAll(/<script\s+defer\s+src="([^"]+)"/g)].map((m) => m[1].split("?")[0]);
 }
 
 // jsdom runs each eval in its own lexical scope; browsers share one for
@@ -100,6 +101,10 @@ function load(opts = {}) {
   const order = scriptsOf(html);
   for (const src of order) {
     if (o.only && !o.only.some((n) => src.includes(n))) continue;
+    // GSAP & co. need real layout/GPU and only decorate; evaluating ~125 KB of
+    // minified code would also skew the loader timing tests. fx.js still loads
+    // and must cope with their absence.
+    if (!o.withMotion && /(gsap|ScrollTrigger|SplitText)\.min\.js$/.test(src)) continue;
     let code = src === "data.js" && o.data != null ? o.data : fs.readFileSync(path.join(o.root, src), "utf8");
     if (src.endsWith("marked.min.js")) {
       try { w.eval(code); } catch (e) { errors.push(src + ": " + e.message); }

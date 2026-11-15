@@ -5,7 +5,7 @@ const { load, sleep, FIXTURE_DATA } = require("./helpers/harness");
 const FINE = { "hover: hover": true };
 
 function cursorPage(opts = {}) {
-  const s = load(Object.assign({ only: ["config.js", "cursor.js"], media: FINE }, opts));
+  const s = load(Object.assign({ only: ["config.js", "cursor.js"], media: FINE, config: 'CONFIG.cursor="ring";' }, opts));
   const d = s.document;
   d.body.insertAdjacentHTML("beforeend", '<a id="l" class="card" href="#/x">link</a><p id="p">text</p><input id="i"><div class="notetree-resizer" id="rz"></div>');
   d.elementFromPoint = () => d.getElementById("l");
@@ -20,6 +20,15 @@ const fire = (s, target, type, o = {}) => {
 };
 const el = (s, id) => s.document.getElementById(id);
 const ring = (s) => s.document.querySelector(".rc");
+
+describe("cursor default", () => {
+  test("the ring cursor is on by default", () => {
+    const s = load({ only: ["config.js", "cursor.js"], media: FINE });
+    assert.equal(s.document.querySelectorAll(".rc").length, 1);
+    assert.ok(s.document.documentElement.classList.contains("rc-on"));
+    assert.deepEqual(s.errors(), []);
+  });
+});
 
 describe("ring cursor", () => {
   test("is a single element and hides the system cursor", () => {
@@ -80,9 +89,11 @@ describe("ring cursor", () => {
     assert.equal(s.document.body.children.length, before);
   });
 
-  test("the ring trails the mouse and settles exactly on it, then swells to 1.75x on hover", async () => {
+  test("the ring sits exactly on the mouse (no trailing), then swells to 1.75x on hover", async () => {
     const s = cursorPage();
     fire(s, el(s, "p"), "pointermove", { clientX: 300, clientY: 200 });
+    await sleep(120); // a frame or two: already exactly there, not catching up
+    assert.match(ring(s).style.transform, /translate3d\(300px,\s*200px,\s*0\)/);
     await sleep(900);
     assert.match(ring(s).style.transform, /translate3d\(300px,\s*200px,\s*0\)/);
     fire(s, el(s, "l"), "pointermove", { clientX: 300, clientY: 200 });

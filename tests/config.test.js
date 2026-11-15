@@ -94,7 +94,6 @@ describe("config checker", () => {
       CONFIG.footer.text = "© {yeer}";
       CONFIG.site.url = "piezuke.github.io/";
       CONFIG.pages.about.contacts[0].icon = "gitub";
-      CONFIG.easterEggs.commands[0].flag = "nope";
     `);
     const by = Object.fromEntries(paths.map((i) => [i.path, i.message]));
     assert.match(by["ui.loader.minDuration"], /number/);
@@ -106,7 +105,6 @@ describe("config checker", () => {
     assert.match(by["footer.text"], /did you mean \{year\}/);
     assert.match(by["site.url"], /https:\/\//);
     assert.match(by["pages.about.contacts[0].icon"], /github/);
-    assert.match(by["easterEggs.commands[0].flag"], /no flag/);
   });
 
   test("flags duplicate URL slugs and bad redirects", () => {
@@ -121,9 +119,6 @@ describe("config checker", () => {
     assert.ok(checker('CONFIG.site.url = "https://piezuke.github.io/";').some((i) => /trailing slash/.test(i.message)));
   });
 
-  test("{flag}-style braces inside flag text are not mistaken for placeholders", () => {
-    assert.deepEqual(checker(`CONFIG.easterEggs.flags[0].flag = "pluh{some_text_here}";`), []);
-  });
 });
 
 describe("canonical address", () => {

@@ -464,6 +464,16 @@ function sectionFromHash() {
     return "";
   }
 }
+/* Jump (never glide) to the top. The stylesheet has scroll-behavior: smooth, and a
+   glide that is still running when the new page's scroll triggers refresh gets
+   undone, which left the new page at the old scroll position. */
+function jumpToTop() {
+  const root = document.documentElement;
+  const prev = root.style.scrollBehavior;
+  root.style.scrollBehavior = "auto";
+  window.scrollTo({ top: 0, behavior: "instant" });
+  root.style.scrollBehavior = prev;
+}
 function scrollAfterRender() {
   const id = sectionFromHash();
   const el = id && /^[a-zA-Z0-9_-]+$/.test(id) ? document.getElementById(id) : null;
@@ -474,7 +484,7 @@ function scrollAfterRender() {
       el.scrollIntoView();
     }
   } else {
-    window.scrollTo({ top: 0 });
+    jumpToTop();
   }
 }
 
@@ -524,10 +534,16 @@ function navigate() {
     // the loader is visible from the first paint; keep it up until `minDuration`
     // has passed since the page started loading
     const token = ++loaderToken;
-    const wait = Math.max(0, loaderMinMs() - performance.now());
-    setTimeout(() => {
+    const minWait = Math.max(0, loaderMinMs() - performance.now());
+    armSlowHint(token, loaderSlowMs() - performance.now());
+    // hide once the minimum time has passed AND fonts / on-screen pictures are ready
+    // (but never later than ui.loader.maxDuration)
+    Promise.all([
+      whenAssetsReady(document.getElementById("app"), loaderMaxMs() - performance.now()),
+      new Promise((r) => setTimeout(r, minWait)),
+    ]).then(() => {
       if (token === loaderToken) loaderHide();
-    }, wait);
+    });
     return;
   }
 
@@ -546,14 +562,14 @@ function navigate() {
       if (window.innerWidth <= 800) {
         const noteMain = document.getElementById("noteMain");
         if (noteMain) noteMain.scrollIntoView({ behavior: "smooth" });
-        else window.scrollTo({ top: 0 });
+        else jumpToTop();
       } else {
-        window.scrollTo({ top: 0 });
+        jumpToTop();
       }
       return;
     } else {
       render(path);
-      window.scrollTo({ top: 0 });
+      jumpToTop();
       return;
     }
   }
@@ -561,6 +577,15 @@ function navigate() {
   // Back / Forward buttons: swap the page instantly, no loading screen
   if (isBackForward()) {
     loaderToken++; // cancel any loader still counting down
+    loaderHide();
+    render(path);
+    scrollAfterRender();
+    return;
+  }
+
+  // pageChangeDuration 0 = swap instantly (the default): no overlay, just the route fade
+  if (loaderPageMs() === 0) {
+    loaderToken++;
     loaderHide();
     render(path);
     scrollAfterRender();
@@ -586,8 +611,58 @@ function loaderMinMs() {
 }
 // how long the loader stays up when clicking to another page
 function loaderPageMs() {
-  const v = Number(cfg("ui.loader.pageChangeDuration", 600));
+  const v = Number(cfg("ui.loader.pageChangeDuration", 500));
   return isFinite(v) && v > 0 ? v : 0;
+}
+// never keep the loading screen up longer than this, whatever is still loading
+function loaderMaxMs() {
+  const v = Number(cfg("ui.loader.maxDuration", 6000));
+  return isFinite(v) && v > 0 ? v : 6000;
+}
+
+/* Resolves when the web fonts and the pictures that are on screen have loaded,
+   or after `capMs` at the latest (so a broken image can never trap the visitor). */
+function whenAssetsReady(root, capMs) {
+  return new Promise((resolve) => {
+    let done = false;
+    const fin = () => {
+      if (!done) {
+        done = true;
+        resolve();
+      }
+    };
+    setTimeout(fin, Math.max(0, capMs));
+    const jobs = [];
+    try {
+      if (document.fonts && document.fonts.ready) jobs.push(document.fonts.ready);
+    } catch (e) {}
+    if (root && cfg("ui.loader.waitForImages", true)) {
+      const vh = window.innerHeight || 800;
+      root.querySelectorAll("img").forEach((img) => {
+        if (typeof img.decode !== "function" || !img.getAttribute("src")) return;
+        if (img.complete && img.naturalWidth > 0) return;
+        if (img.getBoundingClientRect().top > vh * 1.2) return; // below the fold: don't wait
+        jobs.push(img.decode().catch(() => {}));
+      });
+    }
+    Promise.all(jobs).then(fin, fin);
+  });
+}
+
+// if the loading screen is still up after ui.loader.slowAfter ms, say so
+function armSlowHint(token, delayMs) {
+  setTimeout(() => {
+    if (token !== loaderToken) return;
+    const l = document.getElementById("loader");
+    if (!l || l.classList.contains("hide")) return;
+    const lbl = document.getElementById("loaderlabel");
+    const txt = cfg("ui.loader.slow", "");
+    if (lbl && txt) lbl.textContent = txt;
+  }, Math.max(0, delayMs));
+}
+function loaderSlowMs() {
+  const v = Number(cfg("ui.loader.slowAfter", 3500));
+  return isFinite(v) && v > 0 ? v : 3500;
 }
 function setLoaderAria(visible) {
   const l = document.getElementById("loader");
@@ -636,12 +711,18 @@ function showLoader(cb, minOverride) {
   const swapAt = Math.min(480, min); // swap the page while it is fully covered
   const hideAt = Math.max(min, swapAt + 120);
 
+  armSlowHint(token, loaderSlowMs());
   setTimeout(() => {
-    if (token === loaderToken) cb();
+    if (token !== loaderToken) return;
+    cb(); // the new page is rendered behind the loader...
+    // ...which goes away after the minimum time AND once its fonts / pictures are in
+    Promise.all([
+      whenAssetsReady(document.getElementById("app"), loaderMaxMs()),
+      new Promise((r) => setTimeout(r, Math.max(0, hideAt - swapAt))),
+    ]).then(() => {
+      if (token === loaderToken) loaderHide();
+    });
   }, swapAt);
-  setTimeout(() => {
-    if (token === loaderToken) loaderHide();
-  }, hideAt);
 }
 
 let isFirstRender = true;
@@ -706,12 +787,26 @@ function render(path) {
 }
 
 /* ========================= VIEW TEMPLATES ========================= */
+/* Cover picture: the post's own `image` (front-matter) or the site default
+   from ui.covers.image. Returns "" when there is none, so layouts just skip it. */
+function coverSrc(item) {
+  const own = item && typeof item.image === "string" ? item.image.trim() : "";
+  return own || String(cfg("ui.covers.image", "") || "").trim();
+}
+function coverImg(item) {
+  const src = coverSrc(item);
+  if (!src) return "";
+  const pos = String(cfg("ui.covers.position", "center") || "center");
+  return `<img src="${escapeHTML(src)}" alt="" loading="lazy" decoding="async" draggable="false" style="object-position:${escapeHTML(pos)}">`;
+}
+
 function cardHTML(item, page) {
   const tagParts = (item.tag || "")
     .split("·")
     .map((t) => t.trim().toLowerCase())
     .filter(Boolean);
   return `<a class="card reveal-scale" href="${escapeHTML(hrefFor(page, item.slug))}" data-tags="${escapeHTML(tagParts.join(","))}">
+    ${coverSrc(item) ? `<div class="card-cover" aria-hidden="true">${coverImg(item)}</div>` : ""}
     <div class="tag">${escapeHTML(item.tag)}</div>
     <h3>${escapeHTML(item.title)}</h3>
     <p>${escapeHTML(item.excerpt)}</p>
@@ -744,10 +839,37 @@ function viewHome() {
     })
     .join("");
 
+  // each bento tile shows a live preview of what is behind it
+  const tileVis = (page) => {
+    if (page === "writeups" || page === "projects") {
+      const it = pageList(page).slice(0, 3);
+      if (it.length)
+        return `<div class="bx-vis bx-stack" aria-hidden="true">${it
+          .map((x, i) => `<div class="bx-sheet s${i}">${coverImg(x)}<span>${escapeHTML(x.title)}</span></div>`)
+          .join("")}</div>`;
+    }
+    if (page === "notes") {
+      const n = getAllNotes().slice(0, 6);
+      if (n.length)
+        return `<div class="bx-vis bx-tree" aria-hidden="true">${n.map((x, i) => `<div style="--i:${i}"><i></i>${escapeHTML(x.title || x.id || "")}</div>`).join("")}</div>`;
+    }
+    if (page === "timeline") {
+      const t = cfg("pages.timeline.items", []).slice(0, 4);
+      if (t.length)
+        return `<div class="bx-vis bx-line" aria-hidden="true">${t.map((x, i) => `<div style="--i:${i}"><i></i><b>${escapeHTML(x.date || "")}</b><span>${escapeHTML(x.title || "")}</span></div>`).join("")}</div>`;
+    }
+    return coverSrc(null) ? `<div class="bx-vis bx-art" aria-hidden="true">${coverImg(null)}</div>` : "";
+  };
   const exploreCards = ((H.explore && H.explore.cards) || [])
     .map((c) => {
       const n = counts[c.page] != null ? counts[c.page] : 0;
-      return `<a class="explore reveal-scale" href="${escapeHTML(hrefFor(c.page))}"><div class="ex-top"><span>${escapeHTML(fmtCount(n, c.count || "{n}", c.countOne))}</span><span class="card-arrow">${arrow}</span></div><h3>${escapeHTML(c.title)}</h3><p>${escapeHTML(c.text)}</p></a>`;
+      return `<a class="explore reveal-scale" data-page="${escapeHTML(c.page)}" href="${escapeHTML(hrefFor(c.page))}"><div class="ex-top"><span>${escapeHTML(fmtCount(n, c.count || "{n}", c.countOne))}</span><span class="card-arrow">${arrow}</span></div>${tileVis(c.page)}<h3>${escapeHTML(c.title)}</h3><p>${escapeHTML(c.text)}</p></a>`;
+    })
+    .join("");
+  const heroStats = ((H.explore && H.explore.cards) || [])
+    .map((c) => {
+      const n = counts[c.page] != null ? counts[c.page] : 0;
+      return `<div><b data-count="${n}">${String(n).padStart(2, "0")}</b><span>${escapeHTML(c.title)}</span></div>`;
     })
     .join("");
 
@@ -765,7 +887,7 @@ function viewHome() {
     <div class="sechead reveal"><h2>${escapeHTML(L.heading)}</h2><a href="${escapeHTML(hrefFor(page))}">${escapeHTML(L.viewAll || "")}</a></div>
     ${
       list.length
-        ? `<div class="grid">${list.slice(0, how).map((w) => cardHTML(w, page)).join("")}</div>`
+        ? `<div class="grid${how >= 3 && list.length >= 3 ? " grid-featured" : ""}">${list.slice(0, how).map((w) => cardHTML(w, page)).join("")}</div>`
         : `<div class="grid">${empties}</div>`
     }
   </section>`;
@@ -773,6 +895,7 @@ function viewHome() {
 
   return `
   <section class="hero wrap">
+    <canvas class="hero-fx" aria-hidden="true"></canvas>
     <div class="hero-content">
       <div class="hero-text">
         ${hero.status ? `<div class="hero-status reveal">${escapeHTML(hero.status)}</div>` : ""}
@@ -789,7 +912,14 @@ function viewHome() {
         ${chips.slice(0, 3).map((c) => `<span class="hero-chip" aria-hidden="true">${escapeHTML(c)}</span>`).join("")}
       </div>
     </div>
+    ${heroStats ? `<div class="hero-stats" aria-hidden="true">${heroStats}</div>` : ""}
   </section>
+
+  ${
+    Array.isArray(hero.roles) && hero.roles.length
+      ? `<div class="marquee" aria-hidden="true"><div class="marquee-track">${[0, 1].map(() => `<div class="marquee-set">${hero.roles.map((r) => `<span>${escapeHTML(r)}</span><i>✦</i>`).join("").repeat(2)}</div>`).join("")}</div></div>`
+      : ""
+  }
 
   ${
     exploreCards
@@ -820,7 +950,7 @@ function viewList(arr, page) {
   return `
   <section class="wrap" style="padding-top:50px;">
     <div class="eyebrow reveal">${escapeHTML(fmtCount(arr.length, P.entries || "{n}", P.entriesOne))}</div>
-    <h1 class="reveal" style="font-size:clamp(46.9px,7.8vw,81.2px); margin:12px 0 8px;">${escapeHTML(P.heading)}</h1>
+    <h1 class="reveal page-title">${escapeHTML(P.heading)}</h1>
     <p class="reveal" style="color:var(--muted); max-width:520px; margin-bottom:28px;">${escapeHTML(P.subtitle)}</p>
     ${
       allTags.length > 1
@@ -920,7 +1050,7 @@ function mdToHtmlWithOutline(md) {
     const cleanHref = sanitizeMarkdownUrl(href, true);
     if (!cleanHref) return "";
     const titleAttr = title ? ` title="${escapeHTML(title)}"` : "";
-    return `<img src="${escapeHTML(cleanHref)}" alt="${escapeHTML(text || "")}"${titleAttr} loading="lazy" decoding="async">`;
+    return `<img src="${escapeHTML(cleanHref)}" alt="${escapeHTML(text || "")}"${titleAttr} loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
   };
 
   const html = marked.parser(tokens, { renderer });
@@ -970,6 +1100,7 @@ function viewPost(arr, slug, page) {
       }
       <article>
         <div class="article-head">
+          ${coverSrc(item) ? `<div class="article-cover" aria-hidden="true">${coverImg(item)}</div>` : ""}
           <div class="eyebrow">${escapeHTML(item.tag)}</div>
           <h1>${escapeHTML(item.title)}</h1>
           <div class="metarow"><span>${escapeHTML(item.date)}</span><span>${escapeHTML(fmt(PO.readTime || "{n} min read", { n: readTime }))}</span><button type="button" class="share-btn" id="sharebtn" title="${escapeHTML(cfg("pages.post.copyLink.title", ""))}">${escapeHTML(cfg("pages.post.copyLink.label", "copy link"))}</button></div>
@@ -1036,23 +1167,11 @@ function viewAbout() {
   const ST = M.status || {};
   const playlist = typeof PLAYLIST !== "undefined" ? PLAYLIST : [];
   const musicHeading = escapeHTML(M.heading);
-  const avatarAlt = cfg("site.brand", "");
-  return `
-  <section class="wrap" style="padding-top:50px;">
-    <div class="about-header reveal">
-      <picture>
-        <source srcset="${escapeHTML(avatarSrc("webp"))}" type="image/webp">
-        <img class="about-header-img" src="${escapeHTML(avatarSrc("jpg"))}" alt="${escapeHTML(avatarAlt)}" loading="lazy" width="120" height="120">
-      </picture>
-      <div class="about-header-text">
-        <div class="eyebrow">${escapeHTML(A.eyebrow)}</div>
-        <h1>${escapeHTML(A.heading)}</h1>
-      </div>
-    </div>
+  const brand = cfg("site.brand", "");
+  const roles = cfg("pages.home.hero.roles", []);
+  const skills = A.skills || [];
 
-    <div class="about-grid">
-      <aside class="about-sidebar reveal">
-        ${playlist.length === 0 ? `<div class="empty-music">${escapeHTML(M.emoji || "")} ${musicHeading}<br><span style="font-size:15px">${escapeHTML(M.emptyText)}</span></div>` : `<div class="music-widget" id="music-widget">
+  const music = playlist.length === 0 ? `<div class="empty-music">${escapeHTML(M.emoji || "")} ${musicHeading}<br><span style="font-size:15px">${escapeHTML(M.emptyText)}</span></div>` : `<div class="music-widget" id="music-widget">
           <div class="mw-header">
             <div class="mw-label">
               <span>${musicHeading}</span>
@@ -1116,24 +1235,40 @@ function viewAbout() {
                 .join("")}
             </div>
           </div>
-        </div>`}
-      </aside>
+        </div>`;
 
-      <div class="about-main reveal-left" style="grid-column:auto;">
-        <p class="about-bio">${escapeHTML(A.bio)}</p>
-
-        <div class="about-block">
-          <div class="about-subhead">${escapeHTML(A.interestsHeading)}</div>
-          <div class="pillgrid">
-            ${(A.skills || []).map((s) => `<div class="pill">${escapeHTML(s)}</div>`).join("")}
-          </div>
+  return `
+  <section class="wrap about2">
+    <aside class="about-side">
+      <div class="about-portrait">
+        <canvas class="hero-fx" aria-hidden="true"></canvas>
+        <div class="about-photo">
+          <picture>
+            <source srcset="${escapeHTML(avatarSrc("webp"))}" type="image/webp">
+            <img class="about-img" src="${escapeHTML(avatarSrc("jpg"))}" alt="${escapeHTML(brand)}" loading="eager" width="420" height="420">
+          </picture>
         </div>
-
-        <div class="about-block">
-          <div class="about-subhead">${escapeHTML(A.socialsHeading)}</div>
-          ${socialsHTML()}
-        </div>
+        <div class="about-cap"><b>${escapeHTML(brand)}</b>${roles.length ? `<span>${escapeHTML(roles.slice(0, 2).join(" · "))}</span>` : ""}</div>
       </div>
+      <div class="ab-tile ab-music">${music}</div>
+    </aside>
+
+    <div class="about-body">
+      <div class="eyebrow">${escapeHTML(A.eyebrow)}</div>
+      <h1 class="about-h">${escapeHTML(A.heading)}</h1>
+      <p class="about-bio">${escapeHTML(A.bio)}</p>
+
+      <section class="about-sec">
+        <div class="ab-label">${escapeHTML(A.interestsHeading)}</div>
+        <ol class="about-list">
+          ${skills.map((s, i) => `<li class="ab-row"><span class="n">${String(i + 1).padStart(2, "0")}</span><span class="t">${escapeHTML(s)}</span></li>`).join("")}
+        </ol>
+      </section>
+
+      <section class="about-sec">
+        <div class="ab-label">${escapeHTML(A.socialsHeading)}</div>
+        ${socialsHTML()}
+      </section>
     </div>
   </section>
   `;
@@ -1226,7 +1361,7 @@ function renderNoteTree(nodes, activeIdReal, depth = 0, parentPath = "") {
 
       return `
       <div class="folder-group ${isCollapsed ? "collapsed" : ""}" data-folder-path="${escapeHTML(currentPath)}">
-        <div class="folder" onclick="toggleFolder(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleFolder(this);}" role="button" tabindex="0" aria-expanded="${!isCollapsed}">
+        <div class="folder" data-act="folder" role="button" tabindex="0" aria-expanded="${!isCollapsed}">
           <span class="folder-arrow">▾</span>
           <span class="folder-icon">${escapeHTML(isCollapsed ? cfg("pages.notes.icons.folderClosed", "📁") : cfg("pages.notes.icons.folderOpen", "📂"))}</span>
           <span class="folder-name">${escapeHTML(folderName)}</span>
@@ -1241,6 +1376,24 @@ function renderNoteTree(nodes, activeIdReal, depth = 0, parentPath = "") {
     })
     .join("");
 }
+
+/* The notes sidebar used inline click-handler attributes, which forced the CSP to allow
+   inline scripts. One delegated listener handles them instead (CSP: no 'unsafe-inline'). */
+document.addEventListener("click", (e) => {
+  const t = e.target && e.target.closest ? e.target.closest("[data-act]") : null;
+  if (!t) return;
+  const act = t.getAttribute("data-act");
+  if (act === "folder") toggleFolder(t);
+  else if (act === "expand-all") toggleAllFolders(true);
+  else if (act === "collapse-all") toggleAllFolders(false);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const t = e.target && e.target.closest ? e.target.closest('[data-act="folder"]') : null;
+  if (!t) return;
+  e.preventDefault();
+  toggleFolder(t);
+});
 
 function toggleFolder(el) {
   const group = el.closest(".folder-group");
@@ -1361,8 +1514,8 @@ function viewNotes(activeId) {
       <div class="notetree-header">
         <span class="notetree-header-title">${escapeHTML(cfg("pages.notes.vaultTitle", ""))}</span>
         <div class="notetree-header-actions">
-          <button class="notetree-act-btn" onclick="toggleAllFolders(true)" title="${escapeHTML(cfg("pages.notes.expandAll", ""))}" aria-label="${escapeHTML(cfg("pages.notes.expandAll", ""))}">${escapeHTML(cfg("pages.notes.expandIcon", "⊞"))}</button>
-          <button class="notetree-act-btn" onclick="toggleAllFolders(false)" title="${escapeHTML(cfg("pages.notes.collapseAll", ""))}" aria-label="${escapeHTML(cfg("pages.notes.collapseAll", ""))}">${escapeHTML(cfg("pages.notes.collapseIcon", "⊟"))}</button>
+          <button class="notetree-act-btn" data-act="expand-all" title="${escapeHTML(cfg("pages.notes.expandAll", ""))}" aria-label="${escapeHTML(cfg("pages.notes.expandAll", ""))}">${escapeHTML(cfg("pages.notes.expandIcon", "⊞"))}</button>
+          <button class="notetree-act-btn" data-act="collapse-all" title="${escapeHTML(cfg("pages.notes.collapseAll", ""))}" aria-label="${escapeHTML(cfg("pages.notes.collapseAll", ""))}">${escapeHTML(cfg("pages.notes.collapseIcon", "⊟"))}</button>
         </div>
       </div>
       <div class="notetree-items">
@@ -1864,6 +2017,13 @@ function afterRender(path) {
       }
     }, 1200);
   }
+
+  // motion layer (js/fx.js): hero intro, scroll effects, page wipe
+  if (window.FX && typeof window.FX.run === "function") {
+    try {
+      window.FX.run(path);
+    } catch (e) {}
+  }
 }
 
 /* ========================= SITE INIT ========================= */
@@ -1941,6 +2101,48 @@ function initConfig() {
   if (fq) fq.textContent = fmt(cfg("footer.quip", ""));
   const ft = document.getElementById("cfg-footer-text");
   if (ft) ft.textContent = fmt(cfg("footer.text", ""));
+  buildFooter();
+}
+
+/* Footer: call-to-action, three link columns and the back-to-top ring.
+   Built once from config + data (nav links, latest writeups, contacts). */
+function buildFooter() {
+  const F = cfg("footer", {});
+  const arrow = cfg("ui.arrow", "↗");
+  const contacts = cfg("pages.about.contacts", []);
+  const mail = contacts.find((c) => c.icon === "email" && c.url);
+
+  const cta = document.getElementById("footer-cta");
+  if (cta) {
+    cta.innerHTML = `<div class="footer-cta-text"><h2>${escapeHTML(F.ctaHeading || "")}</h2><p>${escapeHTML(F.ctaText || "")}</p></div>${
+      mail ? `<a class="btn solid" href="${sanitizeUrl(mail.url)}">${escapeHTML(F.ctaButton || "")} <span aria-hidden="true">${escapeHTML(arrow)}</span></a>` : ""
+    }`;
+  }
+
+  const row = (href, label, go, extra = "") =>
+    `<a class="flink" href="${href}"${extra}><span>${escapeHTML(label)}</span><span class="fgo" aria-hidden="true">${escapeHTML(go)}</span></a>`;
+  const col = (head, body, cls = "") =>
+    body ? `<nav class="footer-col${cls ? " " + cls : ""}" aria-label="${escapeHTML(head)}"><div class="footer-h">${escapeHTML(head)}</div><div class="footer-links">${body}</div></nav>` : "";
+
+  const navHtml = getNavLinks()
+    .map((n) => row("#" + escapeHTML(n.route), n.label, "→"))
+    .join("");
+  const latestHtml = pageList("writeups")
+    .slice(0, 3)
+    .map((w) => row(escapeHTML(hrefFor("writeups", w.slug)), w.title, "→"))
+    .join("");
+  const socialsHtml = contacts
+    .map((c) =>
+      c.copy != null
+        ? `<button type="button" class="flink" data-copy="${escapeHTML(c.copy)}" data-copied="${escapeHTML(c.copiedText || "copied ✓")}"><span>${escapeHTML(c.label || "")}</span><span class="fgo social-go">${escapeHTML(c.hint || "copy")}</span></button>`
+        : row(sanitizeUrl(c.url || "#"), c.label || "", arrow, c.url && c.url.startsWith("mailto:") ? "" : ' target="_blank" rel="noopener noreferrer"'),
+    )
+    .join("");
+  const cols = document.getElementById("footer-cols");
+  if (cols) {
+    cols.innerHTML = col(F.navHeading || "", navHtml, "pills") + col(F.latestHeading || "", latestHtml) + col(F.socialsHeading || "", socialsHtml, "pills");
+    setupCopyTiles();
+  }
 }
 
 // "Skip to content": #app would be read as a route, so focus it by hand
@@ -1961,5 +2163,28 @@ try {
   console.error("initConfig error:", e);
 }
 
+// Generated post pages carry <meta name="boot-route">: land on that post when the URL
+// has no #route yet (this used to be an inline script, which the CSP now forbids).
+(function applyBootRoute() {
+  const m = document.querySelector('meta[name="boot-route"]');
+  const r = m ? m.getAttribute("content") || "" : "";
+  if (!/^#\/[A-Za-z0-9._~\-\/]+$/.test(r)) return;
+  const h = location.hash;
+  if (h && h !== "#" && h !== "#/") return;
+  try {
+    history.replaceState(null, "", location.pathname + location.search + r);
+  } catch (e) {
+    location.hash = r;
+  }
+})();
+
 // Launch initial route
 navigate();
+
+// Service worker: instant repeat visits + offline. Only the built site registers it
+// (build.js adds <meta name="app-build">), so local development is never cached.
+if ("serviceWorker" in navigator && document.querySelector('meta[name="app-build"]')) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}

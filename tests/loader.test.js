@@ -84,3 +84,76 @@ describe("loading screen", () => {
     assert.equal(s.document.getElementById("app").getAttribute("aria-busy"), null);
   });
 });
+
+describe("loading screen: waits for the page, and says so when it is slow", () => {
+  const slowImages = (ms) => `HTMLImageElement.prototype.decode = function () { return new Promise((r) => setTimeout(r, ${ms})); };`;
+  const stuckImages = "HTMLImageElement.prototype.decode = function () { return new Promise(() => {}); };";
+
+  test("a page change keeps the loader up until the new page's pictures are ready", async () => {
+    const s = load({
+      data: FIXTURE_DATA,
+      config: `CONFIG.ui.loader.minDuration=0; CONFIG.ui.loader.pageChangeDuration=300; ${slowImages(900)}`,
+    });
+    await sleep(1400); // first load done
+    assert.equal(isHidden(s), true);
+    clickLink(s, "#/writeups");
+    await sleep(700); // swapped at ~300ms, pictures need until ~1200ms
+    assert.equal(isHidden(s), false, "still waiting for pictures");
+    await sleep(1100);
+    assert.equal(isHidden(s), true, "gone once they are ready");
+  });
+
+  test("ui.loader.maxDuration releases the loader even if a picture never loads", async () => {
+    const s = load({
+      data: FIXTURE_DATA,
+      config: `CONFIG.ui.loader.minDuration=0; CONFIG.ui.loader.pageChangeDuration=200; CONFIG.ui.loader.maxDuration=600; ${stuckImages}`,
+    });
+    await sleep(1000);
+    assert.equal(isHidden(s), true, "first load is released by the cap");
+    clickLink(s, "#/writeups");
+    await sleep(500);
+    assert.equal(isHidden(s), false, "waiting");
+    await sleep(900);
+    assert.equal(isHidden(s), true, "released by the cap");
+  });
+
+  test("waitForImages: false only uses the minimum time", async () => {
+    const s = load({
+      data: FIXTURE_DATA,
+      config: `CONFIG.ui.loader.minDuration=0; CONFIG.ui.loader.pageChangeDuration=300; CONFIG.ui.loader.waitForImages=false; ${stuckImages}`,
+    });
+    await sleep(500);
+    clickLink(s, "#/writeups");
+    await sleep(700);
+    assert.equal(isHidden(s), true);
+  });
+
+  test("after ui.loader.slowAfter the loading text changes to ui.loader.slow", async () => {
+    const s = load({
+      data: FIXTURE_DATA,
+      config: 'CONFIG.ui.loader.minDuration=1500; CONFIG.ui.loader.slowAfter=250; CONFIG.ui.loader.slow="still going";',
+    });
+    await sleep(120);
+    assert.notEqual(s.document.getElementById("loaderlabel").textContent.trim(), "still going", "not yet");
+    await sleep(350);
+    assert.equal(isHidden(s), false);
+    assert.equal(s.document.getElementById("loaderlabel").textContent.trim(), "still going");
+  });
+});
+
+describe("switching tabs starts the new page at the top", () => {
+  test("the scroll reset is an instant jump (a smooth glide gets undone by the scroll triggers)", async () => {
+    const s = load({
+      data: FIXTURE_DATA,
+      config: "CONFIG.ui.loader.minDuration=0; CONFIG.ui.loader.pageChangeDuration=0; window.__scrolls = []; window.scrollTo = function (o) { window.__scrolls.push(o); };",
+    });
+    await sleep(300);
+    s.window.__scrolls.length = 0;
+    clickLink(s, "#/writeups");
+    await sleep(200);
+    const tops = s.window.__scrolls.filter((o) => o && typeof o === "object" && o.top === 0);
+    assert.ok(tops.length >= 1, "scrolled to the top after the page change");
+    assert.ok(tops.every((o) => o.behavior === "instant"), "and did so instantly, not smoothly");
+    assert.equal(s.document.documentElement.style.scrollBehavior, "", "the page's own smooth-scroll setting is put back afterwards");
+  });
+});

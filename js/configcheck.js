@@ -42,6 +42,7 @@
     },
     ui: {
       arrow: S, renderError: S,
+      covers: { image: S, position: S },
       search: {
         key: S, buttonText: S, buttonTitle: S, buttonLabel: S, dialogLabel: S,
         placeholder: S, empty: S, hintNavigate: S, hintOpen: S, hintClose: S, tagsLabel: S,
@@ -49,6 +50,7 @@
       },
       loader: {
         minDuration: N, pageChangeDuration: N, skipOnBackForward: B,
+        waitForImages: B, maxDuration: N, slowAfter: N, slow: S,
         initial: S, labels: [S],
       },
       theme: { label: S, title: S, toLight: S, toDark: S },
@@ -61,7 +63,7 @@
         nextTitle: S, nextLabel: S,
       },
     },
-    footer: { quip: S, text: S },
+    footer: { quip: S, text: S, ctaHeading: S, ctaText: S, ctaButton: S, navHeading: S, latestHeading: S, socialsHeading: S },
     pages: {
       home: {
         title: S,
@@ -116,14 +118,6 @@
       controls: { prev: S, prevTitle: S, playPause: S, playTitle: S, next: S, nextTitle: S },
       playlist: [{ title: S, artist: S, src: S }],
     },
-    easterEggs: {
-      enabled: B, storageKey: S,
-      toast: { found: S, again: S, wrong: S, progress: S, all: S },
-      labels: { commandTag: S, flagTag: S, submit: S, flagsTitle: S, hintPrefix: S, foundMark: S },
-      consoleArt: [S], consoleMessage: S,
-      flags: [{ id: S, flag: S, hint: S, clicks: N }],
-      commands: [{ input: S, output: S, flag: S }],
-    },
     cursor: S,
   };
 
@@ -131,9 +125,9 @@
   const ICONS = ["github", "twitter", "email", "ctftime", "discord", "link"];
   const CURSORS = ["ring", "on", "native-ring", "os", "off", "native", "system"];
   const BUTTON_STYLES = ["solid", "outline", "ghost"];
-  const PLACEHOLDERS = ["year", "site", "page", "n", "query", "flag", "found", "total"];
+  const PLACEHOLDERS = ["year", "site", "page", "n", "query"];
   // text where braces are content, not placeholders
-  const SKIP_PLACEHOLDERS = /^(easterEggs\.(flags|commands|consoleMessage)|ui\.loader\.labels|pages\.post\.flags)/;
+  const SKIP_PLACEHOLDERS = /^(ui\.loader\.labels|pages\.post\.flags)/;
 
   /* ------------------------------- helpers ------------------------------- */
   const kind = (v) => (Array.isArray(v) ? "array" : v === null ? "null" : typeof v);
@@ -226,7 +220,7 @@
     }
 
     // numbers
-    for (const p of ["ui.loader.minDuration", "ui.loader.pageChangeDuration"]) {
+    for (const p of ["ui.loader.minDuration", "ui.loader.pageChangeDuration", "ui.loader.maxDuration", "ui.loader.slowAfter"]) {
       const v = get(p);
       if (typeof v === "number" && (!isFinite(v) || v < 0 || v > 30000))
         add(p, `${v} is out of range — use milliseconds between 0 and 30000`);
@@ -281,24 +275,6 @@
         if (c.url && !/^(https?:|mailto:|tel:|#|\/)/i.test(c.url)) add(`${p}.url`, "should start with https://, mailto: or tel:");
         if (c.icon && !c.iconSvg && !ICONS.includes(c.icon)) add(`${p}.icon`, `"${c.icon}" — use ${ICONS.join(" | ")}, or supply "iconSvg"`);
       });
-
-    // flag hunt
-    const flags = get("easterEggs.flags");
-    if (Array.isArray(flags)) {
-      const ids = {};
-      flags.forEach((f, i) => {
-        if (!isObj(f)) return;
-        if (!f.id) add(`easterEggs.flags[${i}]`, "missing an id");
-        else if (ids[f.id]) add(`easterEggs.flags[${i}].id`, `duplicate id "${f.id}"`);
-        ids[f.id] = true;
-        if (!f.flag) add(`easterEggs.flags[${i}]`, "missing the flag text");
-      });
-      const cmds = get("easterEggs.commands");
-      if (Array.isArray(cmds))
-        cmds.forEach((c, i) => {
-          if (isObj(c) && c.flag && !ids[c.flag]) add(`easterEggs.commands[${i}].flag`, `no flag with id "${c.flag}"`);
-        });
-    }
 
     // {placeholders}
     (function scan(v, path) {

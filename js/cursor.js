@@ -119,7 +119,7 @@
   let tx = -100,
     ty = -100, // where the mouse is
     x = -100,
-    y = -100, // where the ring is (it trails)
+    y = -100, // where the ring is (always on the pointer)
     s = 1; // current scale
   let hover = false,
     down = false,
@@ -133,10 +133,10 @@
 
   function step() {
     raf = 0;
-    x += (tx - x) * 0.22; // inertia
-    y += (ty - y) * 0.22;
+    x = tx; // locked to the pointer: no trailing, no inertia
+    y = ty;
     const goal = (hover ? 1.75 : 1) * (down ? 0.85 : 1); // swell on hover, squeeze on press
-    s += (goal - s) * 0.18;
+    s += (goal - s) * 0.4; // quick and steady, never overshoots
     paint();
     if (Math.abs(tx - x) > 0.1 || Math.abs(ty - y) > 0.1 || Math.abs(goal - s) > 0.005) {
       raf = requestAnimationFrame(step);

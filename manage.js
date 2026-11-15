@@ -18,12 +18,15 @@
  *   node manage.js ui            - Launch local browser GUI (port 8088)
  *   node manage.js seo           - Regenerate per-post pages, sitemap.xml, feed.xml
  *                                  (also runs automatically after every sync)
+ *   node manage.js csp           - Re-hash the inline <script>s into the Content-Security-Policy
+ *                                  (index.html, 404.html, _headers). Run it after editing one.
  */
 
 const fs = require("fs");
 const path = require("path");
 const readline = require("readline");
 const http = require("http");
+const crypto = require("crypto");
 
 const ROOT_DIR = __dirname;
 const CONTENT_DIR = path.join(ROOT_DIR, "content");
@@ -71,6 +74,60 @@ function escapeHTML(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+/* ---- Content-Security-Policy: hash every inline <script> instead of allowing 'unsafe-inline' ---- */
+const CSP_META_RE = /(http-equiv="Content-Security-Policy"\s+content=")([^"]*)(")/i;
+
+function inlineScriptHashes(html) {
+  const out = [];
+  const re = /<script(?![^>]*\bsrc\s*=)([^>]*)>([\s\S]*?)<\/script>/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    const type = (m[1].match(/\btype\s*=\s*["']?([^"'\s>]+)/i) || [])[1];
+    if (type && !/^(text\/javascript|application\/javascript|module)$/i.test(type)) continue; // JSON-LD etc. never runs
+    out.push("'sha256-" + crypto.createHash("sha256").update(m[2], "utf8").digest("base64") + "'");
+  }
+  return out;
+}
+
+function syncCspHashes() {
+  const changed = [];
+  const read = (f) => fs.readFileSync(f, "utf8");
+  const write = (f, txt) => {
+    if (read(f) !== txt) {
+      fs.writeFileSync(f, txt);
+      changed.push(path.basename(f));
+    }
+  };
+
+  // index.html: keep every directive, replace only script-src
+  let html = read(INDEX_FILE);
+  const hashes = inlineScriptHashes(html);
+  const m = html.match(CSP_META_RE);
+  if (!m) throw new Error("index.html has no Content-Security-Policy <meta>");
+  const policy = m[2].replace(/script-src[^;]*;/, `script-src 'self'${hashes.length ? " " + hashes.join(" ") : ""};`);
+  html = html.replace(CSP_META_RE, (_, a, __, c) => a + policy + c);
+  write(INDEX_FILE, html);
+
+  // _headers: same policy + frame-ancestors (only a real header can set that one)
+  const headersFile = path.join(ROOT_DIR, "_headers");
+  if (fs.existsSync(headersFile)) {
+    const h = read(headersFile).replace(/(Content-Security-Policy:\s*)(.+)/, (_, a) => a + policy.trim() + " frame-ancestors 'none';");
+    write(headersFile, h);
+  }
+
+  // 404.html: a tiny redirect page; it may run its own script and nothing else
+  const f404 = path.join(ROOT_DIR, "404.html");
+  if (fs.existsSync(f404)) {
+    let t = read(f404);
+    const h404 = inlineScriptHashes(t);
+    const csp404 = `default-src 'none'; script-src ${h404.join(" ") || "'none'"}; base-uri 'none'; form-action 'none';`;
+    const tag = `<meta http-equiv="Content-Security-Policy" content="${csp404}" />`;
+    t = CSP_META_RE.test(t) ? t.replace(/<meta\s+http-equiv="Content-Security-Policy"[^>]*>/i, tag) : t.replace(/(<meta charset="UTF-8"\s*\/?>)/i, `$1\n        ${tag}`);
+    write(f404, t);
+  }
+  return { hashes, changed };
 }
 
 function resolveNotesFolder(folder) {
@@ -509,7 +566,9 @@ function buildStubPage(template, cfg, kind, entry, siteUrl) {
 
   // jump to this post inside the app (only when the URL has no #route yet)
   const route = `#/${pageSlug}/${entry.slug}`;
-  const boot = `<script>if(!location.hash||location.hash==="#"||location.hash==="#/"){try{history.replaceState(null,"",location.pathname+location.search+${JSON.stringify(route)})}catch(e){location.hash=${JSON.stringify(route)}}}</script>`;
+  // a <meta>, not an inline script, so the Content-Security-Policy can forbid inline scripts;
+  // js/app.js reads it and lands on the post when the URL has no #route yet
+  const boot = `<meta name="boot-route" content="${attrEscape(route)}" />`;
   html = html.replace(/<head>/i, () => `<head>\n        ${boot}`);
 
   // article text for crawlers / link scrapers (the app replaces it on load)
@@ -1598,6 +1657,13 @@ async function main() {
       console.log(
         "  - SEO: skipped. Set site.url in config.js (e.g. \"https://you.github.io\") to generate\n    per-post pages, sitemap.xml and feed.xml.",
       );
+    return;
+  }
+
+  if (cmd === "csp") {
+    const r = syncCspHashes();
+    console.log(r.changed.length ? `CSP updated in: ${r.changed.join(", ")}` : "CSP already up to date");
+    console.log(`  inline scripts allowed by hash: ${r.hashes.length}`);
     return;
   }
 

@@ -7,12 +7,15 @@
     "test": "node --test --test-timeout=60000",
     "sync": "node manage.js sync",
     "seo": "node manage.js seo",
-    "watch": "node manage.js watch"
+    "watch": "node manage.js watch",
+    "build": "node build.js",
+    "csp": "node manage.js csp"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
+    "esbuild": "0.28.2",
     "jsdom": "^26.0.0"
   },
   "optionalDependencies": {
