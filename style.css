@@ -445,6 +445,7 @@ main {
     width: 30%;
     background: var(--text);
     animation: load 1s ease-in-out infinite;
+    will-change: transform;
 }
 
 .loadertext {
@@ -2680,10 +2681,10 @@ kbd {
 
 @keyframes load {
     0% {
-        margin-left: -30%;
+        transform: translateX(-100%);
     }
     100% {
-        margin-left: 100%;
+        transform: translateX(333%);
     }
 }
 

@@ -68,3 +68,95 @@ describe("accessibility", () => {
     assert.ok(s.document.querySelector('#palette-results [role="option"][aria-selected="true"]'));
   });
 });
+
+describe("accessibility: issues found by Lighthouse / axe", () => {
+  const boot = async (hash = "#/") => {
+    const s = load({ data: FIXTURE_DATA, hash, config: "CONFIG.ui.loader.minDuration=0;" });
+    await sleep(400);
+    return s;
+  };
+  const input = (s) => s.document.getElementById("palette-input");
+
+  test("the search box is a combobox with the aria-expanded it requires, kept in step with the result list", async () => {
+    const s = await boot();
+    assert.equal(input(s).getAttribute("role"), "combobox");
+    assert.equal(input(s).getAttribute("aria-expanded"), "false", "closed palette");
+    s.window.PaletteAPI.open();
+    assert.equal(input(s).getAttribute("aria-expanded"), "true", "open, list showing");
+    input(s).value = "zzzzqqqq-no-match";
+    input(s).dispatchEvent(new s.window.Event("input"));
+    assert.equal(input(s).getAttribute("aria-expanded"), "false", "no results = collapsed");
+    input(s).value = "tcache";
+    input(s).dispatchEvent(new s.window.Event("input"));
+    assert.equal(input(s).getAttribute("aria-expanded"), "true");
+    s.window.PaletteAPI.close();
+    assert.equal(input(s).getAttribute("aria-expanded"), "false", "closed again");
+  });
+
+  test("every element with an ARIA role has the attributes that role requires (the Lighthouse 'aria-required-attr' audit)", async () => {
+    const REQUIRED = { combobox: ["aria-expanded"], checkbox: ["aria-checked"], switch: ["aria-checked"], radio: ["aria-checked"], slider: ["aria-valuenow"], scrollbar: ["aria-valuenow", "aria-controls"], heading: ["aria-level"], meter: ["aria-valuenow"] };
+    for (const hash of ["#/", "#/writeups", "#/me", "#/notes", "#/timeline"]) {
+      const s = await boot(hash);
+      s.window.PaletteAPI.open();
+      for (const el of s.document.querySelectorAll("[role]")) {
+        const role = el.getAttribute("role");
+        const need = [...(REQUIRED[role] || []), ...(role === "separator" && el.hasAttribute("tabindex") ? ["aria-valuenow"] : [])];
+        for (const attr of need) assert.ok(el.hasAttribute(attr), `${hash}: <${el.tagName.toLowerCase()} role="${role}"> is missing ${attr}`);
+      }
+      s.close();
+    }
+  });
+
+  test("the logo link's accessible name contains its visible text (WCAG 2.5.3 Label in Name)", async () => {
+    const s = await boot();
+    const logo = s.document.querySelector("a.brand");
+    const name = logo.getAttribute("aria-label").toLowerCase();
+    assert.ok(name.includes(logo.textContent.trim().toLowerCase()), `"${name}" must contain "${logo.textContent.trim()}"`);
+    assert.match(name, /home/, "...and still says where it goes");
+  });
+
+  test("a copy-to-clipboard contact tile is named after everything written on it", async () => {
+    const s = await boot("#/me");
+    const tile = s.document.querySelector("button.social-tile[data-copy]");
+    const name = tile.getAttribute("aria-label").toLowerCase();
+    for (const part of [".social-label", ".social-handle", ".social-go"]) assert.ok(name.includes(tile.querySelector(part).textContent.trim().toLowerCase()), `name "${name}" includes ${part}`);
+  });
+
+  test("heading order: list pages and the timeline go h1 -> level 2 (no skipped level); home cards stay under their h2", async () => {
+    const s = await boot("#/writeups");
+    const cards = [...s.document.querySelectorAll(".card h3")];
+    assert.ok(cards.length >= 2);
+    for (const h of cards) assert.equal(h.getAttribute("aria-level"), "2", "card titles on a list page are exposed as level 2");
+    s.close();
+    const t = await boot("#/timeline");
+    for (const h of t.document.querySelectorAll(".tlitem h3")) assert.equal(h.getAttribute("aria-level"), "2");
+    t.close();
+    const home = await boot("#/");
+    assert.ok(home.document.querySelector(".sechead h2"), "home has an h2 above its cards");
+    for (const h of home.document.querySelectorAll(".card h3")) assert.equal(h.getAttribute("aria-level"), null, "under an h2, a plain h3 is correct");
+  });
+
+  test("links that say the same thing go to different places only if they sound different (the two 'view all' links)", async () => {
+    const s = await boot("#/");
+    const links = [...s.document.querySelectorAll(".sechead a")];
+    assert.ok(links.length >= 2);
+    const names = links.map((a) => a.textContent.replace(/\s+/g, " ").trim());
+    assert.equal(new Set(names).size, names.length, `link names must be unique: ${names.join(" | ")}`);
+    for (const a of links) assert.match(a.textContent, /view all/, "the visible text is still part of the name");
+  });
+
+  test("the floating theme / weather buttons sit inside a labelled landmark (axe 'region')", async () => {
+    const s = await boot();
+    const box = s.document.querySelector(".bottom-left-controls");
+    assert.equal(box.tagName, "ASIDE");
+    assert.ok(box.getAttribute("aria-label").trim().length > 2);
+    assert.ok(box.contains(s.document.getElementById("themebtn")));
+  });
+
+  test("the loading bar animates transform (runs on the GPU), not margin-left (forces layout every frame)", () => {
+    const css = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "style.css"), "utf8");
+    const frames = css.match(/@keyframes load \{[\s\S]*?\n\}/)[0];
+    assert.match(frames, /transform:\s*translateX/);
+    assert.ok(!/margin-left/.test(frames));
+  });
+});

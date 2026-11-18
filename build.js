@@ -61,7 +61,10 @@ function build(opts = {}) {
   fs.writeFileSync(path.join(out, ".nojekyll"), "");
 
   /* ---- 2. minify ---- */
-  const ours = ["style.css", "fonts.css", "config.js", ...fs.readdirSync(path.join(out, "js")).filter((f) => f.endsWith(".js") && !f.endsWith(".min.js")).map((f) => "js/" + f)];
+  // fonts.css goes on top of style.css: one render-blocking request instead of two
+  fs.writeFileSync(path.join(out, "style.css"), fs.readFileSync(path.join(out, "fonts.css"), "utf8") + "\n" + fs.readFileSync(path.join(out, "style.css"), "utf8"));
+  fs.rmSync(path.join(out, "fonts.css"));
+  const ours = ["style.css", "config.js", ...fs.readdirSync(path.join(out, "js")).filter((f) => f.endsWith(".js") && !f.endsWith(".min.js")).map((f) => "js/" + f)];
   const sizes = [];
   if (minify) {
     for (const f of ours) {
@@ -73,9 +76,21 @@ function build(opts = {}) {
     }
   }
 
+  // marked.min.js ships with room left in it; keep its licence banner, take the rest
+  if (minify) {
+    const mp = path.join(out, "marked.min.js");
+    const msrc = fs.readFileSync(mp, "utf8");
+    const banner = (msrc.match(/^\s*\/\*[\s\S]*?\*\/\s*/) || [""])[0].trim(); // marked's MIT notice must stay
+    const mres = (banner ? banner + "\n" : "") + esbuild.transformSync(msrc, { loader: "js", minify: true, legalComments: "inline", target: "es2020" }).code;
+    if (mres.length < msrc.length) {
+      fs.writeFileSync(mp, mres);
+      sizes.push(["marked.min.js", Buffer.byteLength(msrc), Buffer.byteLength(mres)]);
+    }
+  }
+
   /* ---- 3. content-hash every script/stylesheet URL ---- */
   const versioned = new Map(); // "js/app.js" -> "3f9a1c2e"
-  for (const f of ["style.css", "fonts.css", "config.js", "data.js", "marked.min.js", ...walk(path.join(out, "js")).map((x) => "js/" + x)]) {
+  for (const f of ["style.css", "config.js", "data.js", "marked.min.js", ...walk(path.join(out, "js")).map((x) => "js/" + x)]) {
     versioned.set(f, sha(fs.readFileSync(path.join(out, f))));
   }
   const pages = fs.readdirSync(out).filter((f) => f.endsWith(".html"));
@@ -84,6 +99,7 @@ function build(opts = {}) {
   for (const page of pages) {
     const p = path.join(out, page);
     let html = fs.readFileSync(p, "utf8");
+    html = html.replace(/\s*<link\b[^>]*\bhref="fonts\.css"[^>]*>/gi, ""); // merged into style.css
     html = html.replace(/(\s(?:src|href)=")([^"#?]+)(")/g, (m, a, url, c) => {
       const key = url.replace(/^\.\//, "");
       return versioned.has(key) ? `${a}${key}?v=${versioned.get(key)}${c}` : m;
@@ -101,7 +117,6 @@ function build(opts = {}) {
     "./",
     "index.html",
     v("style.css"),
-    v("fonts.css"),
     v("config.js"),
     v("data.js"),
     v("marked.min.js"),

@@ -145,6 +145,7 @@ const CONFIG = {
       navigated: "Navigated to {page}", // announced after each page change
       loading: "Loading",
       navLabel: "Primary",
+      controls: "Page controls", // the floating theme / weather buttons
     },
 
     miniPlayer: {

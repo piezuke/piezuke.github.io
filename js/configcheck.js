@@ -57,7 +57,7 @@
       rain: { title: S, label: S, on: S, off: S },
       backToTop: { top: S, bottom: S, label: S },
       code: { copy: S, copied: S, label: S, highlight: B, languageLabel: B },
-      a11y: { skipLink: S, navigated: S, loading: S, navLabel: S },
+      a11y: { skipLink: S, navigated: S, loading: S, navLabel: S, controls: S },
       miniPlayer: {
         label: S, linkTitle: S, idleTitle: S, playTitle: S, playLabel: S,
         nextTitle: S, nextLabel: S,

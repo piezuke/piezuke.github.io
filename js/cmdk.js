@@ -248,6 +248,7 @@
     const { out } = compute(q);
     shown = out;
     activeIndex = 0;
+    input.setAttribute("aria-expanded", String(out.length > 0 && overlay.classList.contains("open")));
 
     let html = "";
     if (!q.trim() && index) {
@@ -318,10 +319,12 @@
     overlay.classList.add("open");
     input.value = "";
     renderResults("");
+    input.setAttribute("aria-expanded", "true");
     setTimeout(() => input.focus(), 50);
   }
   function close() {
     overlay.classList.remove("open");
+    input.setAttribute("aria-expanded", "false");
     if (lastFocus && typeof lastFocus.focus === "function") {
       try {
         lastFocus.focus({ preventScroll: true });
@@ -346,6 +349,7 @@
   input.setAttribute("role", "combobox");
   input.setAttribute("aria-controls", "palette-results");
   input.setAttribute("aria-autocomplete", "list");
+  input.setAttribute("aria-expanded", "false"); // required by role=combobox; true while the result list is showing
   results.setAttribute("role", "listbox");
 
   input.addEventListener("input", () => renderResults(input.value));

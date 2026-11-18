@@ -86,6 +86,13 @@
             type="font/woff2"
             crossorigin
         />
+        <link
+            rel="preload"
+            as="font"
+            href="fonts/jetbrains-mono-latin-400-normal.woff2"
+            type="font/woff2"
+            crossorigin
+        />
         <link rel="stylesheet" href="fonts.css" />
         <link rel="stylesheet" href="style.css" />
         <noscript><style>#loader{display:none}</style></noscript>
@@ -286,7 +293,7 @@
             </div>
         </footer>
 
-        <div class="bottom-left-controls">
+        <aside class="bottom-left-controls" aria-label="Page controls" data-cfg-attr="aria-label:ui.a11y.controls">
             <button
                 id="themebtn"
                 class="theme-switch"
@@ -305,7 +312,7 @@
                 aria-label="Toggle weather"
                 data-cfg-attr="title:ui.rain.title;aria-label:ui.rain.label"
             ></button>
-        </div>
+        </aside>
         <audio id="global-player-audio" preload="metadata"></audio>
         <button
             id="btt-btn"

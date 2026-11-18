@@ -143,7 +143,8 @@ function contactTile(c) {
   const aria = `${escapeHTML(label)}: ${escapeHTML(handle)}`;
 
   if (c.copy != null) {
-    return `<button type="button" class="${cls}" data-copy="${escapeHTML(c.copy)}" data-copied="${escapeHTML(c.copiedText || "copied ✓")}" aria-label="${aria}">${inner(c.hint || "click to copy")}</button>`;
+    const hint = c.hint || "click to copy";
+    return `<button type="button" class="${cls}" data-copy="${escapeHTML(c.copy)}" data-copied="${escapeHTML(c.copiedText || "copied ✓")}" aria-label="${aria}, ${escapeHTML(hint)}">${inner(hint)}</button>`;
   }
   const href = c.url || "#";
   const isMail = href.startsWith("mailto:");
@@ -539,7 +540,7 @@ function navigate() {
     // hide once the minimum time has passed AND fonts / on-screen pictures are ready
     // (but never later than ui.loader.maxDuration)
     Promise.all([
-      whenAssetsReady(document.getElementById("app"), loaderMaxMs() - performance.now()),
+      whenAssetsReady(document.getElementById("app"), loaderMaxMs() - performance.now(), true),
       new Promise((r) => setTimeout(r, minWait)),
     ]).then(() => {
       if (token === loaderToken) loaderHide();
@@ -622,7 +623,7 @@ function loaderMaxMs() {
 
 /* Resolves when the web fonts and the pictures that are on screen have loaded,
    or after `capMs` at the latest (so a broken image can never trap the visitor). */
-function whenAssetsReady(root, capMs) {
+function whenAssetsReady(root, capMs, eagerOnly) {
   return new Promise((resolve) => {
     let done = false;
     const fin = () => {
@@ -637,11 +638,16 @@ function whenAssetsReady(root, capMs) {
       if (document.fonts && document.fonts.ready) jobs.push(document.fonts.ready);
     } catch (e) {}
     if (root && cfg("ui.loader.waitForImages", true)) {
-      const vh = window.innerHeight || 800;
+      // No layout reads here (they force an early reflow): pictures that load eagerly are the
+      // ones on screen (the hero portrait). Lazy ones are only waited for on page changes, and
+      // only the first few, which is what sits at the top of a list page.
+      let lazyBudget = eagerOnly ? 0 : 3;
       root.querySelectorAll("img").forEach((img) => {
         if (typeof img.decode !== "function" || !img.getAttribute("src")) return;
         if (img.complete && img.naturalWidth > 0) return;
-        if (img.getBoundingClientRect().top > vh * 1.2) return; // below the fold: don't wait
+        if (img.loading === "lazy") {
+          if (lazyBudget-- <= 0) return;
+        }
         jobs.push(img.decode().catch(() => {}));
       });
     }
@@ -800,7 +806,7 @@ function coverImg(item) {
   return `<img src="${escapeHTML(src)}" alt="" loading="lazy" decoding="async" draggable="false" style="object-position:${escapeHTML(pos)}">`;
 }
 
-function cardHTML(item, page) {
+function cardHTML(item, page, level = 3) {
   const tagParts = (item.tag || "")
     .split("·")
     .map((t) => t.trim().toLowerCase())
@@ -808,7 +814,7 @@ function cardHTML(item, page) {
   return `<a class="card reveal-scale" href="${escapeHTML(hrefFor(page, item.slug))}" data-tags="${escapeHTML(tagParts.join(","))}">
     ${coverSrc(item) ? `<div class="card-cover" aria-hidden="true">${coverImg(item)}</div>` : ""}
     <div class="tag">${escapeHTML(item.tag)}</div>
-    <h3>${escapeHTML(item.title)}</h3>
+    <h3${level === 2 ? ' aria-level="2"' : ""}>${escapeHTML(item.title)}</h3>
     <p>${escapeHTML(item.excerpt)}</p>
     ${item.pills ? `<div class="pillrow">${item.pills.map((p) => `<span class="pill">${escapeHTML(p)}</span>`).join("")}</div>` : ""}
     <div class="cf"><span>${escapeHTML(item.date)}</span><span class="card-arrow">${escapeHTML(cfg("ui.arrow", "↗"))}</span></div>
@@ -884,7 +890,7 @@ function viewHome() {
       .join("");
     return `
   <section class="wrap tight">
-    <div class="sechead reveal"><h2>${escapeHTML(L.heading)}</h2><a href="${escapeHTML(hrefFor(page))}">${escapeHTML(L.viewAll || "")}</a></div>
+    <div class="sechead reveal"><h2>${escapeHTML(L.heading)}</h2><a href="${escapeHTML(hrefFor(page))}">${escapeHTML(L.viewAll || "")}<span class="sr-only"> ${escapeHTML(L.heading)}</span></a></div>
     ${
       list.length
         ? `<div class="grid${how >= 3 && list.length >= 3 ? " grid-featured" : ""}">${list.slice(0, how).map((w) => cardHTML(w, page)).join("")}</div>`
@@ -963,7 +969,7 @@ function viewList(arr, page) {
     ${
       arr.length === 0
         ? `<div style="padding:60px 0; color:var(--dim); font-family:var(--mono);">${escapeHTML(P.empty)}</div>`
-        : `<div class="grid" id="cardgrid">${arr.map((i) => cardHTML(i, page)).join("")}</div>`
+        : `<div class="grid" id="cardgrid">${arr.map((i) => cardHTML(i, page, 2)).join("")}</div>`
     }
     <p id="filter-empty" class="palette-empty" style="display:none;">${escapeHTML(P.noMatch)}</p>
   </section>
@@ -1151,7 +1157,7 @@ function viewTimeline() {
       ${(T.items || []).map(
         (t) => `<div class="tlitem reveal-left">
         <div class="tldate">${escapeHTML(t.date)}</div>
-        <h3>${escapeHTML(t.title)}</h3>
+        <h3 aria-level="2">${escapeHTML(t.title)}</h3>
         <p>${escapeHTML(t.body)}</p>
       </div>`,
       ).join("")}
@@ -2102,6 +2108,15 @@ function initConfig() {
   const ft = document.getElementById("cfg-footer-text");
   if (ft) ft.textContent = fmt(cfg("footer.text", ""));
   buildFooter();
+
+  // the logo link says "Home" to screen readers, but its visible text is the brand:
+  // a link's name has to contain its visible text, so make it "Brand - Home"
+  const logo = document.querySelector("a.brand");
+  const brandText = (cfg("site.brand", "") || "").trim();
+  if (logo && brandText) {
+    const lab = (logo.getAttribute("aria-label") || "").trim();
+    if (!lab.toLowerCase().includes(brandText.toLowerCase())) logo.setAttribute("aria-label", lab ? `${brandText} - ${lab}` : brandText);
+  }
 }
 
 /* Footer: call-to-action, three link columns and the back-to-top ring.

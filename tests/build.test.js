@@ -29,7 +29,10 @@ describe("build.js: what gets published", () => {
     for (const f of ["style.css", "config.js", "js/app.js", "js/fx.js"]) {
       assert.ok(fs.statSync(path.join(out, f)).size < fs.statSync(path.join(ROOT, f)).size * 0.85, `${f} is at least 15% smaller`);
     }
-    for (const f of ["marked.min.js", "js/gsap.min.js"]) assert.equal(fs.readFileSync(path.join(out, f), "utf8"), fs.readFileSync(path.join(ROOT, f), "utf8"));
+    for (const f of ["js/gsap.min.js", "js/ScrollTrigger.min.js", "js/SplitText.min.js"]) assert.equal(fs.readFileSync(path.join(out, f), "utf8"), fs.readFileSync(path.join(ROOT, f), "utf8"), `${f} is vendor code, left as shipped`);
+    const marked = fs.readFileSync(path.join(out, "marked.min.js"), "utf8");
+    assert.ok(marked.length < fs.readFileSync(path.join(ROOT, "marked.min.js"), "utf8").length, "marked.min.js is squeezed a bit more");
+    assert.match(marked, /marked v[\d.]+/, "...with its licence banner kept");
     assert.match(fs.readFileSync(path.join(out, "config.js"), "utf8"), /\bCONFIG\b/, "the shared top-level names survive minification");
   });
 
@@ -51,6 +54,15 @@ describe("build.js: what gets published", () => {
     for (const u of r.precache) if (u !== "./") assert.ok(fs.existsSync(path.join(out, u.split("?")[0])), `${u} exists`);
     assert.ok(!r.precache.some((u) => /\.mp4/.test(u)), "the loader video is streamed, not precached");
     assert.ok(!/<meta name="app-build"/.test(fs.readFileSync(path.join(out, "404.html"), "utf8")), "the 404 redirect page is not controlled by the worker");
+  });
+
+  test("fonts.css is merged into style.css: no separate render-blocking request", () => {
+    const html = fs.readFileSync(path.join(out, "index.html"), "utf8");
+    assert.ok(!/fonts\.css/.test(html), "no link to fonts.css");
+    assert.ok(!files.includes("fonts.css"));
+    assert.ok((fs.readFileSync(path.join(out, "style.css"), "utf8").match(/@font-face/g) || []).length >= 4, "the @font-face rules are now inside style.css");
+    assert.ok(!r.precache.some((u) => /fonts\.css/.test(u)));
+    assert.match(fs.readFileSync(path.join(ROOT, "index.html"), "utf8"), /href="fonts\.css"/, "(the source still has it, for development)");
   });
 
   test("the inline script is untouched, so the page's CSP hash is still valid", () => {
