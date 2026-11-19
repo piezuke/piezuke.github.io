@@ -801,7 +801,7 @@ function render(path) {
 /* Cover picture: the post's own `image` (front-matter) or the site default
    from ui.covers.image. Returns "" when there is none, so layouts just skip it. */
 function coverSrc(item) {
-  const own = item && typeof item.image === "string" ? item.image.trim() : "";
+  const own = item && typeof item.image === "string" ? item.image.trim() : (item && typeof item.thumbnail === "string" ? item.thumbnail.trim() : "");
   return own || String(cfg("ui.covers.image", "") || "").trim();
 }
 function coverImg(item) {

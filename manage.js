@@ -38,9 +38,11 @@ const CONFIG_FILE = path.join(ROOT_DIR, "config.js");
 const INDEX_FILE = path.join(ROOT_DIR, "index.html");
 const SEO_MANIFEST = path.join(ROOT_DIR, ".seo-manifest.json");
 
+const MEDIA_DIR = path.join(ROOT_DIR, "media");
+
 // Ensure content directories exist
 function ensureDirs() {
-  [CONTENT_DIR, WRITEUPS_DIR, PROJECTS_DIR, NOTES_DIR].forEach((dir) => {
+  [CONTENT_DIR, WRITEUPS_DIR, PROJECTS_DIR, NOTES_DIR, MEDIA_DIR].forEach((dir) => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   });
 }
@@ -288,7 +290,7 @@ function extractHeading(body) {
 // Frontmatter keys with a fixed meaning. Any OTHER key (ctf, category, points,
 // difficulty, ...) is kept as free-form `meta` and shown in the post header.
 const KNOWN_META = new Set([
-  "title", "slug", "tag", "date", "excerpt", "pills", "image", "draft", "updated", "id",
+  "title", "slug", "tag", "date", "excerpt", "pills", "image", "thumbnail", "draft", "updated", "id",
 ]);
 const MONTHS = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
 
@@ -350,7 +352,7 @@ function parseExtraText(text) {
   return extraMetaFrom(meta);
 }
 
-// --ctf X --category pwn --points 500 --difficulty hard --meta "a=b,c=d" --draft --image x.png
+// --ctf X --category pwn --points 500 --difficulty hard --meta "a=b,c=d" --draft --image x.png --thumbnail x.png
 function metaFromFlags(flags) {
   const extra = {};
   for (const k of ["ctf", "category", "points", "difficulty", "solves"]) {
@@ -363,7 +365,10 @@ function metaFromFlags(flags) {
     }
   }
   const out = extraMetaFrom(extra);
-  if (flags.image && flags.image !== true) out.__image = String(flags.image);
+  const imgFlag =
+    (flags.image && flags.image !== true ? flags.image : null) ||
+    (flags.thumbnail && flags.thumbnail !== true ? flags.thumbnail : null);
+  if (imgFlag) out.__image = String(imgFlag);
   return out;
 }
 function applyFlagMeta(meta, flags) {
@@ -377,24 +382,66 @@ function applyFlagMeta(meta, flags) {
   return meta;
 }
 
+function resolveAndCopyAsset(mdFile, relPath, slug) {
+  if (!relPath || typeof relPath !== "string") return relPath;
+  const clean = relPath.trim();
+  if (/^(https?:|data:|mailto:|tel:|\/\/|\/)/i.test(clean) || clean.startsWith("media/")) {
+    return clean;
+  }
+  const fileDir = path.dirname(mdFile);
+  const candidate = path.resolve(fileDir, clean);
+  if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+    const parentDirName = path.basename(fileDir);
+    let targetRel;
+    if (parentDirName === "writeups" || parentDirName === "projects") {
+      targetRel = `media/${parentDirName}/${slug}/${path.basename(candidate)}`;
+    } else {
+      const relToContent = path.relative(CONTENT_DIR, candidate).replace(/\\/g, "/");
+      targetRel = `media/${relToContent}`;
+    }
+    const targetAbs = path.join(ROOT_DIR, targetRel);
+    const targetDir = path.dirname(targetAbs);
+    if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+    try {
+      fs.copyFileSync(candidate, targetAbs);
+      return targetRel;
+    } catch (e) {
+      // ignore
+    }
+  }
+  return clean;
+}
+
 function readEntries(dir, defaultTag) {
   const entries = [];
   let drafts = 0;
   for (const file of findFilesRecursive(dir)) {
     const raw = fs.readFileSync(file, "utf8");
-    const { meta, body } = parseFrontmatter(raw);
+    const { meta, body: rawBody } = parseFrontmatter(raw);
     if (isTruthy(meta.draft)) {
       drafts++;
       continue;
     }
     const slug = meta.slug || path.basename(file, ".md");
-    const title = meta.title || extractHeading(body) || slug;
+    const title = meta.title || extractHeading(rawBody) || slug;
     let pills = meta.pills || [];
     if (typeof pills === "string")
       pills = pills.split(",").map((s) => s.trim()).filter(Boolean);
     const excerpt =
       meta.excerpt ||
-      body.split("\n\n")[0].replace(/^#+\s+/g, "").slice(0, 160) + "...";
+      rawBody.split("\n\n")[0].replace(/^#+\s+/g, "").slice(0, 160) + "...";
+
+    // Auto-resolve relative image paths in markdown body
+    let body = rawBody
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+        const resolved = resolveAndCopyAsset(file, url, slug);
+        return `![${alt}](${resolved})`;
+      })
+      .replace(/<img\s+([^>]*?)src=["']([^"']+)["']([^>]*)>/gi, (match, pre, url, post) => {
+        const resolved = resolveAndCopyAsset(file, url, slug);
+        return `<img ${pre}src="${resolved}"${post}>`;
+      });
+
     const entry = {
       title,
       tag: meta.tag || defaultTag,
@@ -404,7 +451,10 @@ function readEntries(dir, defaultTag) {
       slug,
       body,
     };
-    if (meta.image) entry.image = String(meta.image);
+    const thumbVal = meta.image || meta.thumbnail;
+    if (thumbVal) {
+      entry.image = resolveAndCopyAsset(file, String(thumbVal), slug);
+    }
     if (meta.updated) entry.updated = String(meta.updated);
     const extra = extraMetaFrom(meta);
     if (Object.keys(extra).length) entry.meta = extra;
@@ -1071,6 +1121,11 @@ async function interactiveAddWriteup() {
     points: await ask(rl, "  Points", ""),
     difficulty: await ask(rl, "  Difficulty", ""),
   };
+  const image = await ask(
+    rl,
+    "Thumbnail / Cover image path (e.g. media/cover.webp, or press Enter to skip)",
+    "",
+  );
   const importFile = await ask(
     rl,
     "Import from existing .md file (leave empty for template)",
@@ -1086,6 +1141,7 @@ async function interactiveAddWriteup() {
 
   const destFile = path.join(WRITEUPS_DIR, `${slug}.md`);
   const meta = { title, tag, date, excerpt, pills, slug, ...extraMetaFrom(extraAnswers) };
+  if (image.trim()) meta.image = image.trim();
   fs.writeFileSync(destFile, serializeFrontmatter(meta, body), "utf8");
 
   rl.close();
@@ -1130,6 +1186,11 @@ async function interactiveAddProject() {
   const slug = safeContentSlug(
     await ask(rl, "Slug (URL identifier)", defaultSlug),
   );
+  const image = await ask(
+    rl,
+    "Thumbnail / Cover image path (e.g. media/cover.webp, or press Enter to skip)",
+    "",
+  );
   const importFile = await ask(
     rl,
     "Import from existing .md file (leave empty for template)",
@@ -1145,6 +1206,7 @@ async function interactiveAddProject() {
 
   const destFile = path.join(PROJECTS_DIR, `${slug}.md`);
   const meta = { title, tag, date, excerpt, pills, slug };
+  if (image.trim()) meta.image = image.trim();
   fs.writeFileSync(destFile, serializeFrontmatter(meta, body), "utf8");
 
   rl.close();
@@ -1281,7 +1343,7 @@ function launchUI(port = 8088) {
       req.on("data", (chunk) => (body += chunk));
       req.on("end", () => {
         try {
-          const { title, tag, date, pills, excerpt, slug, content, extra, draft } =
+          const { title, tag, date, pills, excerpt, slug, content, extra, draft, image, thumbnail } =
             JSON.parse(body);
           const finalSlug = slugify(slug || title);
           if (!finalSlug) throw new Error("Title or slug required");
@@ -1300,6 +1362,8 @@ function launchUI(port = 8088) {
             slug: finalSlug,
             ...parseExtraText(extra),
           };
+          const imgVal = String(image || thumbnail || "").trim();
+          if (imgVal) meta.image = imgVal;
           if (draft) meta.draft = "true";
           fs.writeFileSync(dest, serializeFrontmatter(meta, content), "utf8");
           syncContent();
@@ -1311,6 +1375,53 @@ function launchUI(port = 8088) {
         }
       });
       return;
+    }
+
+    // API: UPLOAD IMAGE / THUMBNAIL
+    if (url.pathname === "/api/upload" && req.method === "POST") {
+      let body = "";
+      req.on("data", (chunk) => (body += chunk));
+      req.on("end", () => {
+        try {
+          const { name, data } = JSON.parse(body);
+          if (!name || !data) throw new Error("File name and data required");
+          const safeName = path.basename(name).replace(/[^a-zA-Z0-9._-]/g, "_");
+          const base64Data = data.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, "");
+          const buffer = Buffer.from(base64Data, "base64");
+          const uploadsDir = path.join(ROOT_DIR, "media", "uploads");
+          if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+          const dest = path.join(uploadsDir, safeName);
+          fs.writeFileSync(dest, buffer);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: true, path: `media/uploads/${safeName}` }));
+        } catch (e) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: e.message }));
+        }
+      });
+      return;
+    }
+
+    // SERVE STATIC MEDIA FILES
+    if (url.pathname.startsWith("/media/") && req.method === "GET") {
+      const cleanPath = path.normalize(url.pathname).replace(/^(\.\.[\/\\])+/, "");
+      const filePath = path.join(ROOT_DIR, cleanPath);
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        const ext = path.extname(filePath).toLowerCase();
+        const mimes = {
+          ".png": "image/png",
+          ".jpg": "image/jpeg",
+          ".jpeg": "image/jpeg",
+          ".webp": "image/webp",
+          ".gif": "image/gif",
+          ".svg": "image/svg+xml",
+          ".mp4": "video/mp4",
+        };
+        res.writeHead(200, { "Content-Type": mimes[ext] || "application/octet-stream" });
+        return fs.createReadStream(filePath).pipe(res);
+      }
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      return res.end("Not Found");
     }
 
     // SERVE WEB GUI HTML
@@ -1456,7 +1567,7 @@ function renderSidebar() {
     globalData.WRITEUPS.forEach(w => {
       const card = document.createElement('div');
       card.className = 'item-card' + (activeItem && activeItem.slug === w.slug ? ' active' : '');
-      card.innerHTML = '<div class="item-title">' + escapeHTML(w.title) + '</div><div class="item-sub">' + escapeHTML(w.date) + ' · ' + escapeHTML(w.tag) + '</div>';
+      card.innerHTML = '<div class="item-title">' + escapeHTML(w.title) + '</div><div class="item-sub">' + escapeHTML(w.date) + ' · ' + escapeHTML(w.tag) + (w.image ? ' · 🖼️' : '') + '</div>';
       card.onclick = () => { activeItem = w; renderSidebar(); renderForm(); };
       container.appendChild(card);
     });
@@ -1464,7 +1575,7 @@ function renderSidebar() {
     globalData.PROJECTS.forEach(p => {
       const card = document.createElement('div');
       card.className = 'item-card' + (activeItem && activeItem.slug === p.slug ? ' active' : '');
-      card.innerHTML = '<div class="item-title">' + escapeHTML(p.title) + '</div><div class="item-sub">' + escapeHTML(p.date) + ' · ' + escapeHTML(p.tag) + '</div>';
+      card.innerHTML = '<div class="item-title">' + escapeHTML(p.title) + '</div><div class="item-sub">' + escapeHTML(p.date) + ' · ' + escapeHTML(p.tag) + (p.image ? ' · 🖼️' : '') + '</div>';
       card.onclick = () => { activeItem = p; renderSidebar(); renderForm(); };
       container.appendChild(card);
     });
@@ -1518,6 +1629,7 @@ function renderForm() {
     const pills = Array.isArray(activeItem?.pills) ? activeItem.pills.join(', ') : (activeItem?.pills || '');
     const excerpt = activeItem?.excerpt || '';
     const slug = activeItem?.slug || '';
+    const image = activeItem?.image || activeItem?.thumbnail || '';
     const body = activeItem?.body || '## Summary\\n\\nWrite content here...';
     const extraMeta = activeItem?.meta ? Object.entries(activeItem.meta).map(([k, v]) => k + ': ' + v).join('\\n') : '';
 
@@ -1540,6 +1652,17 @@ function renderForm() {
       <div class="form-group">
         <label>PILLS / BADGES (comma-separated):</label>
         <input type="text" id="item-pills" value="\${escapeHTML(pills)}" placeholder="Go, TLS, CLI">
+      </div>
+      <div class="form-group">
+        <label>THUMBNAIL / COVER IMAGE (e.g. media/cover.webp or URL):</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="item-image" value="\${escapeHTML(image)}" placeholder="media/cover.webp or URL" oninput="updateImagePreview(this.value)">
+          <input type="file" id="item-image-file" accept="image/*" style="display:none;" onchange="uploadThumbnail(this)">
+          <button type="button" class="btn-new" onclick="document.getElementById('item-image-file').click()" style="white-space:nowrap; padding:6px 14px; font-size:13px;">UPLOAD</button>
+        </div>
+        <div id="item-image-preview" style="margin-top:8px; display:\${image ? 'block' : 'none'};">
+          <img id="preview-img" src="\${escapeHTML(image)}" style="max-height:100px; max-width:200px; border-radius:6px; border:1px solid var(--border-strong); object-fit:cover;">
+        </div>
       </div>
       <div class="form-group">
         <label>SHORT EXCERPT:</label>
@@ -1596,6 +1719,7 @@ async function saveItem() {
   const pills = document.getElementById('item-pills').value.trim();
   const excerpt = document.getElementById('item-excerpt').value.trim();
   let slug = document.getElementById('item-slug').value.trim();
+  const image = (document.getElementById('item-image')?.value || '').trim();
   const content = document.getElementById('item-body').value;
   const extra = document.getElementById('item-extra').value;
   const draft = document.getElementById('item-draft').checked;
@@ -1606,7 +1730,7 @@ async function saveItem() {
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, tag, date, pills, excerpt, slug, content, extra, draft })
+    body: JSON.stringify({ title, tag, date, pills, excerpt, slug, content, extra, draft, image })
   });
   if (res.ok) {
     showStatus();
@@ -1614,6 +1738,45 @@ async function saveItem() {
   } else {
     alert('Failed to save');
   }
+}
+
+function updateImagePreview(src) {
+  const previewDiv = document.getElementById('item-image-preview');
+  const previewImg = document.getElementById('preview-img');
+  if (src && src.trim()) {
+    previewImg.src = src.trim();
+    previewDiv.style.display = 'block';
+  } else {
+    previewDiv.style.display = 'none';
+  }
+}
+
+async function uploadThumbnail(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: file.name, data: reader.result })
+      });
+      const data = await res.json();
+      if (data.success && data.path) {
+        const imgInput = document.getElementById('item-image');
+        if (imgInput) {
+          imgInput.value = data.path;
+          updateImagePreview(data.path);
+        }
+      } else {
+        alert(data.error || 'Upload failed');
+      }
+    } catch (e) {
+      alert('Upload error: ' + e.message);
+    }
+  };
+  reader.readAsDataURL(file);
 }
 
 function showStatus() {
@@ -1909,8 +2072,8 @@ Commands:
 
 Flags for direct creation:
   node manage.js add note --path "ctf-cheatsheets/pwn.md" --title "Pwn" [--file ./doc.md]
-  node manage.js add writeup --title "My Title" --tag "web" [--file ./doc.md]
-  node manage.js add project --title "My Tool" --tag "go" [--file ./doc.md]
+  node manage.js add writeup --title "My Title" --tag "web" [--image media/pic.webp] [--file ./doc.md]
+  node manage.js add project --title "My Tool" --tag "go" [--image media/pic.webp] [--file ./doc.md]
 `);
   }
 }

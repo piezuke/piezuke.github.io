@@ -278,14 +278,16 @@ describe("GitHub Pages project sites (https://user.github.io/repo)", () => {
 describe("extra post details", () => {
   test("`add writeup` flags become frontmatter fields, data.js meta, and a draft stays out of the site", () => {
     const sb = sandbox();
-    sb.run("add", "writeup", "--title", "Flagged", "--tag", "pwn", "--ctf", "DiceCTF", "--category", "pwn", "--points", "250", "--difficulty", "easy", "--meta", "solves=42");
+    sb.run("add", "writeup", "--title", "Flagged", "--tag", "pwn", "--ctf", "DiceCTF", "--category", "pwn", "--points", "250", "--difficulty", "easy", "--meta", "solves=42", "--thumbnail", "media/thumb.webp");
     sb.run("add", "writeup", "--title", "Hidden", "--draft");
     const md = sb.read("content/writeups/flagged.md");
     assert.match(md, /ctf: DiceCTF/);
     assert.match(md, /points: 250/);
+    assert.match(md, /image: media\/thumb\.webp/);
     const data = sb.read("data.js");
     assert.match(data, /"ctf": "DiceCTF"/);
     assert.match(data, /"solves": "42"/);
+    assert.match(data, /"image": "media\/thumb\.webp"/);
     assert.ok(!/Hidden/.test(data));
     assert.ok(fs.existsSync(path.join(sb.dir, "content/writeups/hidden.md")), "draft file kept on disk");
   });

@@ -29,7 +29,7 @@ describe("dates", () => {
 
 describe("extra metadata", () => {
   test("keeps unknown frontmatter fields, drops reserved/invalid/empty ones, trims length", () => {
-    const out = M.extraMetaFrom({ title: "x", tag: "y", ctf: "PicoCTF", points: 500, "bad key!": "x", empty: "  ", long: "z".repeat(500), pills: ["a"] });
+    const out = M.extraMetaFrom({ title: "x", tag: "y", ctf: "PicoCTF", points: 500, "bad key!": "x", empty: "  ", long: "z".repeat(500), pills: ["a"], image: "pic.png", thumbnail: "thumb.png" });
     assert.deepEqual(Object.keys(out).sort(), ["ctf", "long", "points"]);
     assert.equal(out.points, "500");
     assert.equal(out.long.length, 200);
