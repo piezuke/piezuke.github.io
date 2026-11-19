@@ -39,4 +39,8 @@
     font-weight: 400;
     font-display: swap;
     src: url(fonts/dotgothic16-latin-400-normal.woff2) format("woff2");
+    /* Only the 21 characters Jersey 25 lacks and this font has (arrows, fractions, ...).
+       Without a range the browser downloads it whenever ANY glyph is missing, e.g. for
+       a "→" it does not even contain. Now it loads only when one of these is on screen. */
+    unicode-range: U+00A4, U+00A6, U+00AC-00AD, U+00B1-00B3, U+00B5, U+00B9, U+00BC-00BE, U+02BB-02BC, U+2002, U+2032-2033, U+2044, U+2191, U+2193, U+2215;
 }

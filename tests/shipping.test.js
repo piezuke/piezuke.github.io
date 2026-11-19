@@ -125,3 +125,20 @@ describe("the static shell", () => {
     for (const dead of [".cc-ring", ".cc-root", "custom-cursor", "CONFIG.navLinks", "CONFIG.heroTitle", "ROUTE_ALIASES"]) assert.ok(!all.includes(dead), dead);
   });
 });
+
+describe("fonts are only downloaded when something on screen needs them", () => {
+  const fontsCss = fs.readFileSync(path.join(ROOT, "fonts.css"), "utf8");
+  test("the fallback pixel font has a unicode-range (without one it downloads on every page for any missing glyph)", () => {
+    const block = fontsCss.match(/@font-face \{[^}]*DotGothic16[^}]*\}/)[0];
+    assert.match(block, /unicode-range:\s*U\+/);
+  });
+  test("always-present (but invisible) markup does not use that font: the palette's key hint uses the system font", () => {
+    const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+    assert.match(html, /<kbd><span class="sysarrows">↑↓<\/span><\/kbd>/);
+    assert.match(fs.readFileSync(path.join(ROOT, "style.css"), "utf8"), /\.sysarrows\s*\{[^}]*ui-monospace/);
+  });
+  test("a font that is not Jersey 25 / JetBrains Mono is not preloaded", () => {
+    const pre = [...fs.readFileSync(path.join(ROOT, "index.html"), "utf8").matchAll(/rel="preload"\s+as="font"\s+href="([^"]+)"/g)].map((m) => m[1]);
+    assert.ok(pre.length >= 2 && pre.every((h) => /jersey-25|jetbrains-mono-latin-400-normal/.test(h)), pre.join(", "));
+  });
+});

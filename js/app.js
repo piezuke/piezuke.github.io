@@ -529,7 +529,12 @@ function navigate() {
     isInitialLoad = false;
     currentRoutePath = path;
     render(path);
-    scrollAfterRender();
+    // A fresh load starts at the top. Only a #section link needs a scroll, and scrolling makes the
+    // browser measure the whole page's layout right now (a forced reflow), so skip it otherwise.
+    try {
+      history.scrollRestoration = "manual"; // a reload should not bring back an old scroll position
+    } catch (e) {}
+    if (sectionFromHash()) scrollAfterRender();
     loaderVideoStart();
     setLoaderAria(true);
     // the loader is visible from the first paint; keep it up until `minDuration`

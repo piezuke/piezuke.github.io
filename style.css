@@ -5043,3 +5043,9 @@ html.nav-open { overflow: hidden; }
 .cursor-glow.on {
     opacity: 1;
 }
+
+/* The palette's keyboard hint arrows come from the system font: the palette is always in the
+   page (just invisible), so a web font here would be downloaded on every single page load. */
+.sysarrows {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}

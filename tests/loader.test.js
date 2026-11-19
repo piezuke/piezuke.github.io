@@ -157,3 +157,12 @@ describe("switching tabs starts the new page at the top", () => {
     assert.equal(s.document.documentElement.style.scrollBehavior, "", "the page's own smooth-scroll setting is put back afterwards");
   });
 });
+
+describe("first load does not force a layout measurement", () => {
+  test("a plain first load never scrolls (the page is already at the top); the browser's own restoration is switched off", async () => {
+    const s = load({ data: FIXTURE_DATA, config: "CONFIG.ui.loader.minDuration=0; window.__scrolls = []; window.scrollTo = function (o) { window.__scrolls.push(o); };" });
+    await sleep(300);
+    assert.equal(s.window.__scrolls.length, 0, "no scrollTo on a plain first load (it would force an early reflow)");
+    assert.equal(s.window.history.scrollRestoration, "manual", "a reload starts at the top instead of restoring an old position");
+  });
+});
