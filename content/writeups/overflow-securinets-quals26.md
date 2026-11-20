@@ -2,7 +2,7 @@
 title: Over?flow Securinets-Quals26
 tag: PWN · low-level · Signed Integer · memcpy · PIE
 date: 2026-10
-excerpt: Stack corruction with memcpy() due to very large memory size leading to RIP control
+excerpt: Stack corruction due to calling memcpy() with a very big size argument
 pills:
   - CTF
   - PWN
@@ -11,6 +11,7 @@ slug: overflow-securinets-quals26
 CTF: Securinets Quals26
 Category: PWN
 Difficulty: Easy-Medium
+Topics: Stack corruption, memcpy()
 image: media/uploads/1269318.png
 ---
 
@@ -22,7 +23,7 @@ image: media/uploads/1269318.png
 
 ---
 
-## 1. Challenge overview
+## 1. Challenge Overview
 
 The program starts by asking for our “wise words” and a character count for it. The interesting part is that the count is read as a signed integer, but is later passed to `memcpy()` as its length. This creates an integer-sign conversion issue: a negative count can become an extremely large unsigned copy length.
 
@@ -30,7 +31,7 @@ So we can use this to corrupt control-flow data and redirect execution to the ch
 
 ---
 
-## 2. Initial recon
+## 2. Initial Recon
 
 The executable is a 64-bit x86-64 ELF binaries with PIE ON. The disassembly exposes useful functions, including `input()`, `prompt()`, `escape()`, and `win()`.
 
@@ -38,7 +39,7 @@ The executable is a 64-bit x86-64 ELF binaries with PIE ON. The disassembly expo
 
 ---
 
-## 3. Reversing the input path
+## 3. Reversing The Execution Flow
 
 The program's execution flow is:
 
@@ -55,20 +56,20 @@ Here is the decompiled logic inside `input()`:
 ```c
 __isoc23_scanf("%d", &wise_words_len);
 
-// Upper-bound check (0x70 = 112 bytes)
+// Upper-bound check
 if (0x70 < wise_words_len) {
     printf(&bluh);
     exit(0);
 }
 read(0, wise_words, 0xe0);
 
-// Passes length to memcpy as a signed int cast to long/size_t
+// Passes length to memcpy as a signed int cast to long
 memcpy(buf_in_main, local_buf, (long)wise_words_len);
 ```
 
 ---
 
-## 4. The Vulnerable logic
+## 4. The Vulnerable Logic
 
 In `input()`, the length validation checks only the upper bound:
 
@@ -80,18 +81,18 @@ if (0x70 < wise_words_len) {
 
 There is **no check ensuring the count is non-negative**. Because signed `-1 < 0x70` evaluates to true, any negative number passes the sanity check without triggering `exit(0)`.
 
-However, the third argument to `memcpy()` expects an **unsigned `size_t`**. When the signed 32-bit `wise_words_len` is sign-extended and loaded into `rdx`, negative numbers become massive unsigned values:
+However, the third argument to `memcpy()` expects an **unsigned `long`**. When the signed 32-bit `wise_words_len` is sign-extended and loaded into `rdx`, negative numbers become massive unsigned values:
 
 ![loading into rdx](media/writeups/overflow-securinets-quals26/image_1.png)
 
 For example, on x86-64:
-- `-67` sign-extends to `0xffffffffffffffbd` ($2^{64} - 67$)
+- `-67` sign-extends to `0xffffffffffffffbd` 
 
 ---
 
-## 5. Exploit Stategy
+## 5. Exploit Strategy
 
-<small>(optional rambling) the escape function which cancels out all format specifies and the printf with a format string vulnerability in the main function are decoys as far I know, But hey, you never know with challneges like these. Do enlighten if you find a way to use that in spome way too</small>
+> *(optional rambling) The escape function which cancels out all format specifiers and the printf with a format string vulnerability in the main function are decoys as far I know, But hey, you never know with challenges like these. Do enlighten me if you find a way to use that in some way too*
 
 Ok so now that we know why things are going wrong because of the negative numbers, we can move onto successfully exploiting it for our devious schemes. From what I observed, depending on what negative number we give, say `-3` then it will preserve `3` bytes that come right before main function's local buffer. and if it was `-6` it would preserve `6` bytes bfr it from corruption dues to memcpy(debug on gdb to get a better idea).
 
@@ -105,7 +106,7 @@ Our wise words would so be ==> `120 bytes padding + '\x1d\x92'`
 
 ---
 
-## 6. Da exploit script
+## 6. Exploit Script
 
 ```python
 #!/usr/bin/env python3
