@@ -1,12 +1,10 @@
 /**
  * ===================================================================
- * piezuke_ — Cloud Background Canvas
+ * piezuke_ — Halftone / Screentone Cloud Background Canvas
  * ===================================================================
- * - Pixel-block clouds are pre-rendered as OPAQUE sprites and then
- *   composited with a single alpha, so overlapping blocks never stack
- *   into muddy patches.
- * - Clouds are tuned separately for dark and light themes and
- *   re-colour instantly when the theme flips (listens for "themechange").
+ * - 10–16 halftone clouds distributed across a jittered 2D sky grid
+ *   so the full viewport is evenly populated from top to bottom.
+ * - High-visibility palettes tuned for both dark and light modes.
  * - prefers-reduced-motion => one static frame, no animation loop.
  */
 
@@ -16,7 +14,6 @@
   const ctx = canvas.getContext("2d", { alpha: true });
   if (!ctx) return;
 
-  const P = 16; // pixel grid size for the blocky look
   let W = 0,
     H = 0,
     clouds = [];
@@ -35,17 +32,17 @@
       prefersReduced,
   );
 
-  /* ---------- theme palettes (pure black & white) ---------- */
+  /* ---------- high-visibility theme palettes ---------- */
   const PALETTE = {
     dark: {
-      body: [255, 255, 255],
-      shade: [150, 150, 150],
-      cloudAlpha: [0.075, 0.125],
+      dot: [255, 255, 255],
+      shade: [180, 180, 180],
+      alpha: [0.2, 0.34],
     },
     light: {
-      body: [40, 40, 40],
-      shade: [0, 0, 0],
-      cloudAlpha: [0.07, 0.115],
+      dot: [0, 0, 0],
+      shade: [35, 35, 35],
+      alpha: [0.38, 0.62],
     },
   };
   const themeName = () =>
@@ -53,53 +50,92 @@
       ? "light"
       : "dark";
 
-  /* ---------- cloud sprite ---------- */
-  function makeShape() {
-    const r = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
-    const baseW = r(7, 12) * P;
-    const blocks = [];
-    blocks.push({ x: 0, y: 0, w: baseW, h: 2 * P });
-    blocks.push({ x: -P * r(1, 2), y: P, w: P * 3, h: P });
-    blocks.push({ x: baseW - P * 2, y: P, w: P * r(3, 4), h: P });
-    const midW =
-      Math.max(3, Math.round((baseW / P) * (0.55 + Math.random() * 0.2))) * P;
-    const midX = r(1, Math.max(1, Math.round((baseW - midW) / P) - 1)) * P;
-    blocks.push({ x: midX, y: -P * r(1, 2), w: midW, h: P * 3 });
-    const bumps = r(1, 2);
-    for (let i = 0; i < bumps; i++) {
-      const w = r(2, 4) * P;
-      const x = midX + r(0, Math.max(0, Math.round((midW - w) / P))) * P;
-      blocks.push({ x, y: -P * r(2, 4), w, h: P * 3 });
+  /* ---------- cloud silhouette ---------- */
+  function makeCloudShape() {
+    const w = 280 + Math.floor(Math.random() * 150);
+    const h = 115 + Math.floor(Math.random() * 55);
+    const puffs = [];
+
+    const baseCount = 5 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < baseCount; i++) {
+      const t = i / (baseCount - 1);
+      puffs.push({
+        x: w * (0.16 + t * 0.68) + (Math.random() - 0.5) * 14,
+        y: h * (0.64 + (Math.random() - 0.5) * 0.06),
+        rx: w * (0.17 + Math.random() * 0.05),
+        ry: h * (0.28 + Math.random() * 0.08),
+      });
     }
-    let minX = 0,
-      minY = 0,
-      maxX = 0,
-      maxY = 0;
-    blocks.forEach((b) => {
-      minX = Math.min(minX, b.x);
-      minY = Math.min(minY, b.y);
-      maxX = Math.max(maxX, b.x + b.w);
-      maxY = Math.max(maxY, b.y + b.h);
-    });
-    blocks.forEach((b) => {
-      b.x -= minX;
-      b.y -= minY;
-    });
-    return { blocks, w: maxX - minX, h: maxY - minY };
+
+    const topCount = 3 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < topCount; i++) {
+      const t = (i + 0.5) / topCount;
+      const arch = 1 - Math.abs(t - 0.5) * 1.1;
+      puffs.push({
+        x: w * (0.22 + t * 0.56) + (Math.random() - 0.5) * 16,
+        y: h * (0.44 - arch * 0.14 + (Math.random() - 0.5) * 0.06),
+        rx: w * (0.15 + arch * 0.06),
+        ry: h * (0.26 + arch * 0.12),
+      });
+    }
+
+    return { w, h, puffs };
   }
 
-  function paintSprite(cloud, pal) {
+  function sampleDensity(shape, x, y) {
+    let d = 0;
+    const puffs = shape.puffs;
+    for (let i = 0; i < puffs.length; i++) {
+      const p = puffs[i];
+      const dx = (x - p.x) / p.rx;
+      const dy = (y - p.y) / p.ry;
+      const dist2 = dx * dx + dy * dy;
+      if (dist2 < 1) {
+        const f = 1 - dist2;
+        d += f * f * 1.2;
+      }
+    }
+    const bottomFade =
+      y > shape.h * 0.74
+        ? Math.max(0, 1 - (y - shape.h * 0.74) / (shape.h * 0.18))
+        : 1;
+    return Math.min(1.35, d * bottomFade);
+  }
+
+  /* ---------- halftone screentone sprite renderer ---------- */
+  function paintHalftoneSprite(cloud, pal) {
+    const { w, h } = cloud.shape;
     const c = cloud.sprite || document.createElement("canvas");
-    c.width = cloud.shape.w;
-    c.height = cloud.shape.h;
+    c.width = w;
+    c.height = h;
     const g = c.getContext("2d");
-    g.clearRect(0, 0, c.width, c.height);
-    g.fillStyle = `rgb(${pal.body.join(",")})`;
-    cloud.shape.blocks.forEach((b) => g.fillRect(b.x, b.y, b.w, b.h));
-    g.globalCompositeOperation = "source-atop";
-    g.fillStyle = `rgb(${pal.shade.join(",")})`;
-    g.fillRect(0, c.height - P, c.width, P);
-    g.globalCompositeOperation = "source-over";
+    g.clearRect(0, 0, w, h);
+
+    const step = 7;
+    const maxR = step * 0.46;
+    const [dr, dg, db] = pal.dot;
+    const [sr, sg, sb] = pal.shade;
+
+    for (let row = 0, y = step * 0.5; y < h; row++, y += step) {
+      const offsetX = (row % 2) * (step * 0.5);
+      const isUnderside = y > h * 0.58;
+      g.fillStyle = isUnderside
+        ? `rgb(${sr},${sg},${sb})`
+        : `rgb(${dr},${dg},${db})`;
+
+      for (let x = offsetX + step * 0.5; x < w; x += step) {
+        const density = sampleDensity(cloud.shape, x, y);
+        if (density < 0.1) continue;
+
+        const r = Math.min(maxR, Math.pow(Math.min(1, density), 0.65) * maxR);
+        if (r < 0.6) continue;
+
+        g.beginPath();
+        g.arc(x, y, r, 0, Math.PI * 2);
+        g.fill();
+      }
+    }
+
     cloud.sprite = c;
     cloud.paintedFor = themeName();
   }
@@ -109,7 +145,7 @@
 
   function build() {
     const dpr = Math.min(
-      coarse || lowPower ? 1 : 1.25,
+      coarse || lowPower ? 1 : 1.5,
       window.devicePixelRatio || 1,
     );
     W = window.innerWidth;
@@ -119,23 +155,35 @@
     canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const total = lowPower ? 6 : Math.max(7, Math.min(12, Math.round(W / 150)));
+    // 2D jittered grid: spreads clouds evenly across the entire sky
+    const cols = lowPower ? 3 : Math.max(3, Math.min(5, Math.round(W / 320)));
+    const rows = lowPower ? 3 : Math.max(3, Math.min(4, Math.round(H / 240)));
+    const total = cols * rows;
+    const cellW = (W + 360) / cols;
+    const cellH = (H * 0.94) / rows;
     const pal = PALETTE[themeName()];
-    clouds = Array.from({ length: total }, (_, i) => {
-      const depth = Math.random();
-      const cloud = {
-        shape: makeShape(),
-        scale: 1 + depth * 0.9,
-        speed: 0.12 + depth * 0.42,
-        alpha:
-          pal.cloudAlpha[0] + depth * (pal.cloudAlpha[1] - pal.cloudAlpha[0]),
-        depth,
-        x: (i / total) * (W + 600) - 300 + Math.random() * 120,
-        y: Math.random() * H * 0.92,
-      };
-      paintSprite(cloud, pal);
-      return cloud;
-    });
+
+    clouds = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const depth = Math.random(); // 0 far .. 1 near
+        const cloud = {
+          shape: makeCloudShape(),
+          scale: 0.72 + depth * 0.58,
+          speed: 0.14 + depth * 0.36,
+          alpha: pal.alpha[0] + depth * (pal.alpha[1] - pal.alpha[0]),
+          depth,
+          row: r,
+          rows,
+          x: c * cellW - 180 + (Math.random() - 0.5) * cellW * 0.55,
+          y: r * cellH + (Math.random() - 0.25) * cellH * 0.5,
+        };
+        paintHalftoneSprite(cloud, pal);
+        clouds.push(cloud);
+      }
+    }
+    // Draw far clouds behind near clouds
+    clouds.sort((a, b) => a.depth - b.depth);
   }
 
   function resizeBitmapOnly() {
@@ -158,22 +206,23 @@
   function drawClouds(dt) {
     const theme = themeName();
     const pal = PALETTE[theme];
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
+
     for (let i = 0; i < clouds.length; i++) {
       const c = clouds[i];
       if (c.paintedFor !== theme) {
-        paintSprite(c, pal);
-        c.alpha =
-          pal.cloudAlpha[0] + c.depth * (pal.cloudAlpha[1] - pal.cloudAlpha[0]);
+        paintHalftoneSprite(c, pal);
+        c.alpha = pal.alpha[0] + c.depth * (pal.alpha[1] - pal.alpha[0]);
       }
       const w = c.shape.w * c.scale;
       const h = c.shape.h * c.scale;
       ctx.globalAlpha = c.alpha;
-      ctx.drawImage(c.sprite, Math.round(c.x), Math.round(c.y), w, h);
+      ctx.drawImage(c.sprite, c.x, c.y, w, h);
       c.x += c.speed * dt;
-      if (c.x > W + 40) {
-        c.x = -w - 40;
-        c.y = Math.random() * H * 0.92;
+      if (c.x > W + 80) {
+        const cellH = (H * 0.94) / c.rows;
+        c.x = -w - 80;
+        c.y = c.row * cellH + (Math.random() - 0.25) * cellH * 0.5;
       }
     }
     ctx.globalAlpha = 1;

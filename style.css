@@ -5479,3 +5479,805 @@ nav.links a.active::after {
   }
   .card:hover .card-cover img { transform: none !important; }
 }
+
+/* === PIEZUKE FULL RESPONSIVE SYSTEM === */
+
+/* ---- 1. Box-sizing, overflow lock & fluid base ---- */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+html, body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+body {
+  font-size: clamp(14.5px, 0.45vw + 13px, 16.5px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+img, video, svg, canvas, picture {
+  max-width: 100%;
+}
+.wrap {
+  width: 85%;
+  max-width: none;
+  padding-left: clamp(14px, 4vw, 36px);
+  padding-right: clamp(14px, 4vw, 36px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Critical CSS Grid fix: prevent long <pre>/URLs/hex from expanding grid tracks */
+.postlayout > *,
+.hero-content > *,
+.about2 > *,
+.noteswrap > *,
+.grid > *,
+.explore-grid > *,
+.footer-main > *,
+.footer-cols > *,
+.social-grid > *,
+article,
+.article-head,
+.article-body,
+.right-panel,
+.noteMain {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* ---- 2. Fluid Typography (fits cleanly from 320px to 4K) ---- */
+#glitch,
+.hero h1 {
+  font-size: clamp(2.25rem, 6.8vw, 5rem) !important;
+  line-height: 0.98 !important;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.hero-role {
+  font-size: clamp(0.9rem, 1.5vw, 1.15rem) !important;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+.hero-subtitle {
+  font-size: clamp(0.92rem, 1.15vw, 1.08rem) !important;
+  line-height: 1.6;
+  max-width: 56ch;
+}
+.page-title,
+.about-h,
+.tl-title {
+  font-size: clamp(1.9rem, 5.2vw, 3.8rem) !important;
+  line-height: 1.06 !important;
+  overflow-wrap: anywhere;
+}
+.sechead {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.sechead h2 {
+  font-size: clamp(1.3rem, 2.4vw, 1.9rem) !important;
+}
+.card h3,
+.explore h3 {
+  font-size: clamp(1.08rem, 1.5vw, 1.32rem) !important;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
+}
+.card p,
+.explore p {
+  font-size: clamp(0.88rem, 1vw, 0.96rem) !important;
+  line-height: 1.55;
+}
+
+/* ---- 3. Writeup / Article Mobile Bulletproofing ---- */
+.article-head h1 {
+  font-size: clamp(1.65rem, 4.2vw, 2.85rem) !important;
+  line-height: 1.14 !important;
+  overflow-wrap: anywhere;
+}
+.article-head .eyebrow {
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+.metarow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  font-size: clamp(0.8rem, 1vw, 0.92rem);
+}
+.postmeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+}
+.postmeta .pm {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: clamp(0.76rem, 0.95vw, 0.86rem);
+}
+.article-body {
+  font-size: clamp(0.94rem, 0.6vw + 0.82rem, 1.04rem) !important;
+  line-height: 1.75;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+.article-body h1 { font-size: clamp(1.45rem, 2.8vw, 2.1rem); line-height: 1.2; overflow-wrap: anywhere; }
+.article-body h2 { font-size: clamp(1.22rem, 2.1vw, 1.6rem); line-height: 1.25; overflow-wrap: anywhere; }
+.article-body h3 { font-size: clamp(1.05rem, 1.5vw, 1.26rem); line-height: 1.3; overflow-wrap: anywhere; }
+
+/* Inline code wraps safely (fixes long hex like 0xffffffffffffffbd on mobile) */
+.article-body :not(pre) > code {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-size: 0.88em;
+}
+
+/* Fenced code blocks scroll horizontally INSIDE the box, never stretching the page */
+.article-body pre {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: clamp(12px, 2.5vw, 18px);
+  font-size: clamp(11.5px, 0.6vw + 10px, 13.5px);
+  line-height: 1.55;
+}
+.article-body pre code {
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+/* Images & tables inside writeups */
+.article-body img,
+.article-cover img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+}
+.article-body table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-collapse: collapse;
+}
+.article-body blockquote {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+.article-body ul,
+.article-body ol {
+  padding-left: clamp(18px, 3vw, 26px);
+}
+
+/* Filter chips bar wraps cleanly */
+.filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---- 4. Tablet Breakpoint (<= 1080px) ---- */
+@media (max-width: 1080px) {
+  .postlayout {
+    grid-template-columns: minmax(0, 190px) minmax(0, 1fr) !important;
+    gap: 24px !important;
+  }
+  .right-panel {
+    grid-column: 1 / -1;
+    position: static !important;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-top: 12px;
+  }
+  .about2 {
+    grid-template-columns: minmax(0, 290px) minmax(0, 1fr) !important;
+    gap: 28px !important;
+  }
+}
+
+/* ---- 5. Mobile & Small Tablet Breakpoint (<= 860px) ---- */
+@media (max-width: 860px) {
+  .topnav {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    gap: 8px !important;
+  }
+  .cmdk-text {
+    display: none !important;
+  }
+  #cmdk-btn {
+    padding: 6px 10px !important;
+  }
+  .mini-player {
+    max-width: 160px;
+  }
+
+  /* Home */
+  .hero {
+    padding-top: 28px !important;
+  }
+  .hero-content {
+    grid-template-columns: minmax(0, 1fr) !important;
+    flex-direction: column-reverse !important;
+    text-align: center;
+    gap: 24px !important;
+  }
+  .hero-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .hero-avatar {
+    margin: 0 auto;
+    max-width: min(240px, 64vw);
+  }
+  .hero-avatar-img {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1;
+  }
+  .cta {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px !important;
+  }
+  .hero-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  /* Grids */
+  .explore-grid,
+  .grid,
+  .grid-featured {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+  }
+
+  /* Writeups / Posts */
+  .postlayout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 22px !important;
+  }
+  .postlayout > .outline {
+    display: none !important;
+  }
+  .right-panel {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .post-pager {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .post-pager-link.next {
+    text-align: left;
+  }
+
+  /* About */
+  .about2 {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 24px !important;
+  }
+  .about-side {
+    position: static !important;
+    max-width: 420px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .about-img {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Notes Vault */
+  .noteswrap {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: calc(100dvh - 64px);
+  }
+  .notetree {
+    width: 100% !important;
+    max-height: 38vh;
+    overflow-y: auto;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border, rgba(255,255,255,0.12));
+  }
+  .notetree-resizer {
+    display: none !important;
+  }
+  .noteMain {
+    width: 100% !important;
+    padding: 18px 14px !important;
+  }
+
+  /* Timeline */
+  .tl {
+    padding-left: 18px !important;
+  }
+  .tlitem {
+    padding-left: 14px !important;
+  }
+
+  /* Footer */
+  .footer-main {
+    grid-template-columns: minmax(0, 1fr) !important;
+    flex-direction: column !important;
+    gap: 24px !important;
+  }
+  .footer-cols {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
+    gap: 18px !important;
+  }
+  .footer-bar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+}
+
+/* ---- 6. Narrow Phones (<= 480px) ---- */
+@media (max-width: 480px) {
+  .mini-info {
+    display: none !important;
+  }
+  .mini-player {
+    max-width: none;
+  }
+  .social-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .cta .btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+  .article-body pre {
+    font-size: 12px;
+    padding: 12px;
+  }
+  .bottom-left-controls {
+    left: 12px !important;
+    bottom: 14px !important;
+    transform: scale(0.9);
+    transform-origin: bottom left;
+  }
+  #btt-btn {
+    right: 12px !important;
+    bottom: 14px !important;
+    transform: scale(0.84);
+    transform-origin: bottom right;
+  }
+  #palette {
+    width: calc(100vw - 20px) !important;
+    max-height: 80dvh !important;
+  }
+}
+
+/* ---- 7. Mobile Floating TOC Pill & Drawer ---- */
+#mob-toc-btn {
+  display: none;
+  position: fixed;
+  right: 14px;
+  bottom: 80px;
+  z-index: 900;
+  font-family: var(--mono, monospace);
+  font-size: 12.5px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  background: var(--surface, rgba(16,16,16,0.92));
+  color: var(--text, #fafafa);
+  border: 1px solid var(--border-strong, rgba(255,255,255,0.22));
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.35);
+  cursor: pointer;
+}
+@media (max-width: 860px) {
+  #mob-toc-btn.visible { display: inline-flex; align-items: center; gap: 6px; }
+}
+#mob-toc-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 9996;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(5px);
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+}
+#mob-toc-drawer.open { display: flex; }
+.mob-toc-sheet {
+  width: 100%;
+  max-width: 520px;
+  max-height: 68dvh;
+  overflow-y: auto;
+  background: var(--bg, #0a0a0a);
+  color: var(--text, #fafafa);
+  border-top: 1px solid var(--border-strong, rgba(255,255,255,0.2));
+  border-radius: 16px 16px 0 0;
+  padding: 18px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  font-family: var(--mono, monospace);
+}
+.mob-toc-sheet h4 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim, #888);
+}
+.mob-toc-sheet a {
+  display: block;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: var(--text, #fafafa);
+  text-decoration: none;
+  font-size: 14px;
+}
+.mob-toc-sheet a.h3 {
+  padding-left: 24px;
+  font-size: 13px;
+  color: var(--muted, #aaa);
+}
+.mob-toc-sheet a:hover {
+  background: var(--surface, rgba(255,255,255,0.08));
+}
+
+
+/* === READABILITY SHIELD OVER CLOUDS === */
+#bgcanvas {
+  opacity: 0.29;
+  transition: opacity 0.35s ease;
+}
+.postlayout article {
+  background: color-mix(in srgb, var(--bg, #050505) 84%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255,255,255,0.08)) 70%, transparent);
+  border-radius: 16px;
+  padding: clamp(18px, 3vw, 34px);
+}
+.noteMain {
+  background: color-mix(in srgb, var(--bg, #050505) 86%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+
+/* === 85% PAGE WIDTH === */
+.wrap {
+  width: 85% !important;
+  max-width: none !important;
+}
+@media (max-width: 640px) {
+  .wrap {
+    width: 96% !important;
+  }
+}
+
+/* === HERO CLEAN VISUAL POLISH === */
+
+/* 1. Keep check/grid pattern gone */
+body,
+.hero,
+.hero::before,
+.hero::after,
+.hero-bg,
+.bg-grid {
+  background-image: none !important;
+}
+.hero::before,
+.hero::after,
+body::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* 2. Full-scale hero proportions for 85% width */
+.hero {
+  min-height: calc(100svh - 110px);
+  padding-top: clamp(32px, 5vh, 64px) !important;
+  padding-bottom: clamp(28px, 4vh, 48px) !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(36px, 5.5vh, 64px);
+}
+
+.hero-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr);
+  align-items: center;
+  gap: clamp(32px, 5vw, 80px);
+}
+
+.hero-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(16px, 2.2vh, 26px);
+}
+
+.hero #glitch,
+.hero h1 {
+  margin: 0 !important;
+  font-size: clamp(3.6rem, 8.5vw, 7.6rem) !important;
+  line-height: 0.92 !important;
+  letter-spacing: -0.03em;
+  text-decoration: none !important;
+  border-bottom: none !important;
+}
+.hero #glitch::after,
+.hero h1::after {
+  display: none !important;
+  content: none !important;
+}
+
+.hero-role {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  font-size: clamp(1.1rem, 1.75vw, 1.55rem) !important;
+  color: var(--muted, #b0b0b0);
+  min-height: 1.5em;
+}
+
+.hero-subtitle {
+  margin: 0 !important;
+  font-size: clamp(1.05rem, 1.4vw, 1.35rem) !important;
+  line-height: 1.6 !important;
+  color: var(--muted, #a6a6a6);
+  max-width: 48ch;
+}
+
+.hero .cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px !important;
+  margin-top: 8px;
+}
+.hero .cta .btn {
+  font-size: clamp(0.95rem, 1.1vw, 1.1rem) !important;
+  padding: clamp(12px, 1.2vw, 16px) clamp(20px, 2vw, 28px) !important;
+}
+
+/* 3. Sharp Manga-Panel Avatar Frame (no generic rounded box) */
+.hero-avatar {
+  justify-self: end;
+  width: clamp(300px, 31vw, 470px) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+.hero-avatar::before,
+.hero-avatar::after {
+  display: none !important;
+  content: none !important;
+}
+.hero-avatar-img {
+  display: block;
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 2px !important;
+  border: 2px solid var(--text, #fafafa) !important;
+  box-shadow:
+    12px 12px 0 0 color-mix(in srgb, var(--text, #fafafa) 16%, transparent),
+    24px 24px 50px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* 4. Larger, balanced counts strip */
+.hero-stats {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 18px clamp(32px, 5vw, 76px) !important;
+  padding: 24px 0 0 !important;
+  margin-top: 0 !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  border-top: 1px solid color-mix(in srgb, var(--text, #fff) 14%, transparent) !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+}
+.hero-stats > div {
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.hero-stats b {
+  font-family: var(--mono, monospace);
+  font-size: clamp(1.6rem, 2.5vw, 2.3rem) !important;
+  font-weight: 700;
+  color: var(--text, #fff);
+  letter-spacing: -0.02em;
+}
+.hero-stats span {
+  font-family: var(--mono, monospace);
+  font-size: clamp(0.82rem, 0.95vw, 0.95rem) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted, #888);
+}
+
+@media (max-width: 860px) {
+  .hero {
+    min-height: auto;
+  }
+  .hero-content {
+    grid-template-columns: minmax(0, 1fr);
+    text-align: center;
+  }
+  .hero-text {
+    align-items: center;
+  }
+  .hero-avatar {
+    justify-self: center;
+    width: min(300px, 74vw) !important;
+  }
+  .hero-stats {
+    justify-content: center;
+  }
+}
+
+/* === HERO AVATAR: RAW FLOATING INK === */
+.hero-avatar {
+  position: relative !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  mix-blend-mode: normal !important;
+  overflow: visible !important;
+  aspect-ratio: 1 / 1;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  animation: wavyOuterZoom 5.5s ease-in-out infinite;
+  will-change: scale;
+}
+
+.hero-avatar picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20200%22%3E%3Cpath%20fill%3D%22%23000%22%20d%3D%22M193.50%2C100.00%20L192.66%2C104.16%20L190.31%2C108.13%20L186.88%2C111.77%20L182.98%2C115.06%20L179.28%2C118.10%20L176.39%2C121.08%20L174.66%2C124.26%20L174.19%2C127.84%20L174.78%2C131.96%20L175.98%2C136.59%20L177.20%2C141.54%20L177.84%2C146.51%20L177.41%2C151.10%20L175.64%2C154.96%20L172.52%2C157.83%20L168.29%2C159.66%20L163.37%2C160.58%20L158.28%2C160.95%20L153.51%2C161.24%20L149.41%2C161.95%20L146.14%2C163.51%20L143.65%2C166.13%20L141.71%2C169.81%20L139.96%2C174.26%20L138.04%2C178.99%20L135.64%2C183.38%20L132.59%2C186.84%20L128.89%2C188.92%20L124.68%2C189.41%20L120.18%2C188.40%20L115.65%2C186.26%20L111.32%2C183.57%20L107.29%2C181.00%20L103.56%2C179.16%20L100.00%2C178.50%20L96.44%2C179.16%20L92.71%2C181.00%20L88.68%2C183.57%20L84.35%2C186.26%20L79.82%2C188.40%20L75.32%2C189.41%20L71.11%2C188.92%20L67.41%2C186.84%20L64.36%2C183.38%20L61.96%2C178.99%20L60.04%2C174.26%20L58.29%2C169.81%20L56.35%2C166.13%20L53.86%2C163.51%20L50.59%2C161.95%20L46.49%2C161.24%20L41.72%2C160.95%20L36.63%2C160.58%20L31.71%2C159.66%20L27.48%2C157.83%20L24.36%2C154.96%20L22.59%2C151.10%20L22.16%2C146.51%20L22.80%2C141.54%20L24.02%2C136.59%20L25.22%2C131.96%20L25.81%2C127.84%20L25.34%2C124.26%20L23.61%2C121.08%20L20.72%2C118.10%20L17.02%2C115.06%20L13.12%2C111.77%20L9.69%2C108.13%20L7.34%2C104.16%20L6.50%2C100.00%20L7.34%2C95.84%20L9.69%2C91.87%20L13.12%2C88.23%20L17.02%2C84.94%20L20.72%2C81.90%20L23.61%2C78.92%20L25.34%2C75.74%20L25.81%2C72.16%20L25.22%2C68.04%20L24.02%2C63.41%20L22.80%2C58.46%20L22.16%2C53.49%20L22.59%2C48.90%20L24.36%2C45.04%20L27.48%2C42.17%20L31.71%2C40.34%20L36.63%2C39.42%20L41.72%2C39.05%20L46.49%2C38.76%20L50.59%2C38.05%20L53.86%2C36.49%20L56.35%2C33.87%20L58.29%2C30.19%20L60.04%2C25.74%20L61.96%2C21.01%20L64.36%2C16.62%20L67.41%2C13.16%20L71.11%2C11.08%20L75.32%2C10.59%20L79.82%2C11.60%20L84.35%2C13.74%20L88.68%2C16.43%20L92.71%2C19.00%20L96.44%2C20.84%20L100.00%2C21.50%20L103.56%2C20.84%20L107.29%2C19.00%20L111.32%2C16.43%20L115.65%2C13.74%20L120.18%2C11.60%20L124.68%2C10.59%20L128.89%2C11.08%20L132.59%2C13.16%20L135.64%2C16.62%20L138.04%2C21.01%20L139.96%2C25.74%20L141.71%2C30.19%20L143.65%2C33.87%20L146.14%2C36.49%20L149.41%2C38.05%20L153.51%2C38.76%20L158.28%2C39.05%20L163.37%2C39.42%20L168.29%2C40.34%20L172.52%2C42.17%20L175.64%2C45.04%20L177.41%2C48.90%20L177.84%2C53.49%20L177.20%2C58.46%20L175.98%2C63.41%20L174.78%2C68.04%20L174.19%2C72.16%20L174.66%2C75.74%20L176.39%2C78.92%20L179.28%2C81.90%20L182.98%2C84.94%20L186.88%2C88.23%20L190.31%2C91.87%20L192.66%2C95.84%20Z%22%2F%3E%3C%2Fsvg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20200%22%3E%3Cpath%20fill%3D%22%23000%22%20d%3D%22M193.50%2C100.00%20L192.66%2C104.16%20L190.31%2C108.13%20L186.88%2C111.77%20L182.98%2C115.06%20L179.28%2C118.10%20L176.39%2C121.08%20L174.66%2C124.26%20L174.19%2C127.84%20L174.78%2C131.96%20L175.98%2C136.59%20L177.20%2C141.54%20L177.84%2C146.51%20L177.41%2C151.10%20L175.64%2C154.96%20L172.52%2C157.83%20L168.29%2C159.66%20L163.37%2C160.58%20L158.28%2C160.95%20L153.51%2C161.24%20L149.41%2C161.95%20L146.14%2C163.51%20L143.65%2C166.13%20L141.71%2C169.81%20L139.96%2C174.26%20L138.04%2C178.99%20L135.64%2C183.38%20L132.59%2C186.84%20L128.89%2C188.92%20L124.68%2C189.41%20L120.18%2C188.40%20L115.65%2C186.26%20L111.32%2C183.57%20L107.29%2C181.00%20L103.56%2C179.16%20L100.00%2C178.50%20L96.44%2C179.16%20L92.71%2C181.00%20L88.68%2C183.57%20L84.35%2C186.26%20L79.82%2C188.40%20L75.32%2C189.41%20L71.11%2C188.92%20L67.41%2C186.84%20L64.36%2C183.38%20L61.96%2C178.99%20L60.04%2C174.26%20L58.29%2C169.81%20L56.35%2C166.13%20L53.86%2C163.51%20L50.59%2C161.95%20L46.49%2C161.24%20L41.72%2C160.95%20L36.63%2C160.58%20L31.71%2C159.66%20L27.48%2C157.83%20L24.36%2C154.96%20L22.59%2C151.10%20L22.16%2C146.51%20L22.80%2C141.54%20L24.02%2C136.59%20L25.22%2C131.96%20L25.81%2C127.84%20L25.34%2C124.26%20L23.61%2C121.08%20L20.72%2C118.10%20L17.02%2C115.06%20L13.12%2C111.77%20L9.69%2C108.13%20L7.34%2C104.16%20L6.50%2C100.00%20L7.34%2C95.84%20L9.69%2C91.87%20L13.12%2C88.23%20L17.02%2C84.94%20L20.72%2C81.90%20L23.61%2C78.92%20L25.34%2C75.74%20L25.81%2C72.16%20L25.22%2C68.04%20L24.02%2C63.41%20L22.80%2C58.46%20L22.16%2C53.49%20L22.59%2C48.90%20L24.36%2C45.04%20L27.48%2C42.17%20L31.71%2C40.34%20L36.63%2C39.42%20L41.72%2C39.05%20L46.49%2C38.76%20L50.59%2C38.05%20L53.86%2C36.49%20L56.35%2C33.87%20L58.29%2C30.19%20L60.04%2C25.74%20L61.96%2C21.01%20L64.36%2C16.62%20L67.41%2C13.16%20L71.11%2C11.08%20L75.32%2C10.59%20L79.82%2C11.60%20L84.35%2C13.74%20L88.68%2C16.43%20L92.71%2C19.00%20L96.44%2C20.84%20L100.00%2C21.50%20L103.56%2C20.84%20L107.29%2C19.00%20L111.32%2C16.43%20L115.65%2C13.74%20L120.18%2C11.60%20L124.68%2C10.59%20L128.89%2C11.08%20L132.59%2C13.16%20L135.64%2C16.62%20L138.04%2C21.01%20L139.96%2C25.74%20L141.71%2C30.19%20L143.65%2C33.87%20L146.14%2C36.49%20L149.41%2C38.05%20L153.51%2C38.76%20L158.28%2C39.05%20L163.37%2C39.42%20L168.29%2C40.34%20L172.52%2C42.17%20L175.64%2C45.04%20L177.41%2C48.90%20L177.84%2C53.49%20L177.20%2C58.46%20L175.98%2C63.41%20L174.78%2C68.04%20L174.19%2C72.16%20L174.66%2C75.74%20L176.39%2C78.92%20L179.28%2C81.90%20L182.98%2C84.94%20L186.88%2C88.23%20L190.31%2C91.87%20L192.66%2C95.84%20Z%22%2F%3E%3C%2Fsvg%3E");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  animation: wavySpin 22s linear infinite;
+  will-change: rotate;
+}
+
+.hero-avatar::before,
+.hero-avatar::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  pointer-events: none;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  will-change: rotate;
+}
+
+/* Crisp solid wavy outline hugging the avatar */
+.hero-avatar::before {
+  inset: 0;
+  z-index: 2;
+  background: color-mix(in srgb, var(--text, #fafafa) 82%, transparent);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20200%22%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222.4%22%20d%3D%22M193.50%2C100.00%20L192.66%2C104.16%20L190.31%2C108.13%20L186.88%2C111.77%20L182.98%2C115.06%20L179.28%2C118.10%20L176.39%2C121.08%20L174.66%2C124.26%20L174.19%2C127.84%20L174.78%2C131.96%20L175.98%2C136.59%20L177.20%2C141.54%20L177.84%2C146.51%20L177.41%2C151.10%20L175.64%2C154.96%20L172.52%2C157.83%20L168.29%2C159.66%20L163.37%2C160.58%20L158.28%2C160.95%20L153.51%2C161.24%20L149.41%2C161.95%20L146.14%2C163.51%20L143.65%2C166.13%20L141.71%2C169.81%20L139.96%2C174.26%20L138.04%2C178.99%20L135.64%2C183.38%20L132.59%2C186.84%20L128.89%2C188.92%20L124.68%2C189.41%20L120.18%2C188.40%20L115.65%2C186.26%20L111.32%2C183.57%20L107.29%2C181.00%20L103.56%2C179.16%20L100.00%2C178.50%20L96.44%2C179.16%20L92.71%2C181.00%20L88.68%2C183.57%20L84.35%2C186.26%20L79.82%2C188.40%20L75.32%2C189.41%20L71.11%2C188.92%20L67.41%2C186.84%20L64.36%2C183.38%20L61.96%2C178.99%20L60.04%2C174.26%20L58.29%2C169.81%20L56.35%2C166.13%20L53.86%2C163.51%20L50.59%2C161.95%20L46.49%2C161.24%20L41.72%2C160.95%20L36.63%2C160.58%20L31.71%2C159.66%20L27.48%2C157.83%20L24.36%2C154.96%20L22.59%2C151.10%20L22.16%2C146.51%20L22.80%2C141.54%20L24.02%2C136.59%20L25.22%2C131.96%20L25.81%2C127.84%20L25.34%2C124.26%20L23.61%2C121.08%20L20.72%2C118.10%20L17.02%2C115.06%20L13.12%2C111.77%20L9.69%2C108.13%20L7.34%2C104.16%20L6.50%2C100.00%20L7.34%2C95.84%20L9.69%2C91.87%20L13.12%2C88.23%20L17.02%2C84.94%20L20.72%2C81.90%20L23.61%2C78.92%20L25.34%2C75.74%20L25.81%2C72.16%20L25.22%2C68.04%20L24.02%2C63.41%20L22.80%2C58.46%20L22.16%2C53.49%20L22.59%2C48.90%20L24.36%2C45.04%20L27.48%2C42.17%20L31.71%2C40.34%20L36.63%2C39.42%20L41.72%2C39.05%20L46.49%2C38.76%20L50.59%2C38.05%20L53.86%2C36.49%20L56.35%2C33.87%20L58.29%2C30.19%20L60.04%2C25.74%20L61.96%2C21.01%20L64.36%2C16.62%20L67.41%2C13.16%20L71.11%2C11.08%20L75.32%2C10.59%20L79.82%2C11.60%20L84.35%2C13.74%20L88.68%2C16.43%20L92.71%2C19.00%20L96.44%2C20.84%20L100.00%2C21.50%20L103.56%2C20.84%20L107.29%2C19.00%20L111.32%2C16.43%20L115.65%2C13.74%20L120.18%2C11.60%20L124.68%2C10.59%20L128.89%2C11.08%20L132.59%2C13.16%20L135.64%2C16.62%20L138.04%2C21.01%20L139.96%2C25.74%20L141.71%2C30.19%20L143.65%2C33.87%20L146.14%2C36.49%20L149.41%2C38.05%20L153.51%2C38.76%20L158.28%2C39.05%20L163.37%2C39.42%20L168.29%2C40.34%20L172.52%2C42.17%20L175.64%2C45.04%20L177.41%2C48.90%20L177.84%2C53.49%20L177.20%2C58.46%20L175.98%2C63.41%20L174.78%2C68.04%20L174.19%2C72.16%20L174.66%2C75.74%20L176.39%2C78.92%20L179.28%2C81.90%20L182.98%2C84.94%20L186.88%2C88.23%20L190.31%2C91.87%20L192.66%2C95.84%20Z%22%2F%3E%3C%2Fsvg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20200%22%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222.4%22%20d%3D%22M193.50%2C100.00%20L192.66%2C104.16%20L190.31%2C108.13%20L186.88%2C111.77%20L182.98%2C115.06%20L179.28%2C118.10%20L176.39%2C121.08%20L174.66%2C124.26%20L174.19%2C127.84%20L174.78%2C131.96%20L175.98%2C136.59%20L177.20%2C141.54%20L177.84%2C146.51%20L177.41%2C151.10%20L175.64%2C154.96%20L172.52%2C157.83%20L168.29%2C159.66%20L163.37%2C160.58%20L158.28%2C160.95%20L153.51%2C161.24%20L149.41%2C161.95%20L146.14%2C163.51%20L143.65%2C166.13%20L141.71%2C169.81%20L139.96%2C174.26%20L138.04%2C178.99%20L135.64%2C183.38%20L132.59%2C186.84%20L128.89%2C188.92%20L124.68%2C189.41%20L120.18%2C188.40%20L115.65%2C186.26%20L111.32%2C183.57%20L107.29%2C181.00%20L103.56%2C179.16%20L100.00%2C178.50%20L96.44%2C179.16%20L92.71%2C181.00%20L88.68%2C183.57%20L84.35%2C186.26%20L79.82%2C188.40%20L75.32%2C189.41%20L71.11%2C188.92%20L67.41%2C186.84%20L64.36%2C183.38%20L61.96%2C178.99%20L60.04%2C174.26%20L58.29%2C169.81%20L56.35%2C166.13%20L53.86%2C163.51%20L50.59%2C161.95%20L46.49%2C161.24%20L41.72%2C160.95%20L36.63%2C160.58%20L31.71%2C159.66%20L27.48%2C157.83%20L24.36%2C154.96%20L22.59%2C151.10%20L22.16%2C146.51%20L22.80%2C141.54%20L24.02%2C136.59%20L25.22%2C131.96%20L25.81%2C127.84%20L25.34%2C124.26%20L23.61%2C121.08%20L20.72%2C118.10%20L17.02%2C115.06%20L13.12%2C111.77%20L9.69%2C108.13%20L7.34%2C104.16%20L6.50%2C100.00%20L7.34%2C95.84%20L9.69%2C91.87%20L13.12%2C88.23%20L17.02%2C84.94%20L20.72%2C81.90%20L23.61%2C78.92%20L25.34%2C75.74%20L25.81%2C72.16%20L25.22%2C68.04%20L24.02%2C63.41%20L22.80%2C58.46%20L22.16%2C53.49%20L22.59%2C48.90%20L24.36%2C45.04%20L27.48%2C42.17%20L31.71%2C40.34%20L36.63%2C39.42%20L41.72%2C39.05%20L46.49%2C38.76%20L50.59%2C38.05%20L53.86%2C36.49%20L56.35%2C33.87%20L58.29%2C30.19%20L60.04%2C25.74%20L61.96%2C21.01%20L64.36%2C16.62%20L67.41%2C13.16%20L71.11%2C11.08%20L75.32%2C10.59%20L79.82%2C11.60%20L84.35%2C13.74%20L88.68%2C16.43%20L92.71%2C19.00%20L96.44%2C20.84%20L100.00%2C21.50%20L103.56%2C20.84%20L107.29%2C19.00%20L111.32%2C16.43%20L115.65%2C13.74%20L120.18%2C11.60%20L124.68%2C10.59%20L128.89%2C11.08%20L132.59%2C13.16%20L135.64%2C16.62%20L138.04%2C21.01%20L139.96%2C25.74%20L141.71%2C30.19%20L143.65%2C33.87%20L146.14%2C36.49%20L149.41%2C38.05%20L153.51%2C38.76%20L158.28%2C39.05%20L163.37%2C39.42%20L168.29%2C40.34%20L172.52%2C42.17%20L175.64%2C45.04%20L177.41%2C48.90%20L177.84%2C53.49%20L177.20%2C58.46%20L175.98%2C63.41%20L174.78%2C68.04%20L174.19%2C72.16%20L174.66%2C75.74%20L176.39%2C78.92%20L179.28%2C81.90%20L182.98%2C84.94%20L186.88%2C88.23%20L190.31%2C91.87%20L192.66%2C95.84%20Z%22%2F%3E%3C%2Fsvg%3E");
+  animation: wavySpin 22s linear infinite;
+}
+
+/* Counter-rotating dashed wavy halo */
+.hero-avatar::after {
+  inset: -2.5%;
+  z-index: 1;
+  background: color-mix(in srgb, var(--text, #fafafa) 42%, transparent);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20200%22%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-dasharray%3D%225%207%22%20stroke-linecap%3D%22round%22%20d%3D%22M196.50%2C100.00%20L195.76%2C104.30%20L193.67%2C108.43%20L190.62%2C112.28%20L187.13%2C115.81%20L183.79%2C119.13%20L181.11%2C122.39%20L179.41%2C125.80%20L178.78%2C129.57%20L179.03%2C133.78%20L179.78%2C138.42%20L180.53%2C143.33%20L180.74%2C148.24%20L180.00%2C152.81%20L178.07%2C156.72%20L174.94%2C159.77%20L170.83%2C161.88%20L166.10%2C163.20%20L161.20%2C164.01%20L156.55%2C164.72%20L152.46%2C165.79%20L149.08%2C167.55%20L146.35%2C170.22%20L144.08%2C173.78%20L141.96%2C177.98%20L139.68%2C182.39%20L136.97%2C186.48%20L133.68%2C189.74%20L129.82%2C191.78%20L125.50%2C192.40%20L120.93%2C191.69%20L116.33%2C189.98%20L111.89%2C187.75%20L107.70%2C185.60%20L103.78%2C184.06%20L100.00%2C183.50%20L96.22%2C184.06%20L92.30%2C185.60%20L88.11%2C187.75%20L83.67%2C189.98%20L79.07%2C191.69%20L74.50%2C192.40%20L70.18%2C191.78%20L66.32%2C189.74%20L63.03%2C186.48%20L60.32%2C182.39%20L58.04%2C177.98%20L55.92%2C173.78%20L53.65%2C170.22%20L50.92%2C167.55%20L47.54%2C165.79%20L43.45%2C164.72%20L38.80%2C164.01%20L33.90%2C163.20%20L29.17%2C161.88%20L25.06%2C159.77%20L21.93%2C156.72%20L20.00%2C152.81%20L19.26%2C148.24%20L19.47%2C143.33%20L20.22%2C138.42%20L20.97%2C133.78%20L21.22%2C129.57%20L20.59%2C125.80%20L18.89%2C122.39%20L16.21%2C119.13%20L12.87%2C115.81%20L9.38%2C112.28%20L6.33%2C108.43%20L4.24%2C104.30%20L3.50%2C100.00%20L4.24%2C95.70%20L6.33%2C91.57%20L9.38%2C87.72%20L12.87%2C84.19%20L16.21%2C80.87%20L18.89%2C77.61%20L20.59%2C74.20%20L21.22%2C70.43%20L20.97%2C66.22%20L20.22%2C61.58%20L19.47%2C56.67%20L19.26%2C51.76%20L20.00%2C47.19%20L21.93%2C43.28%20L25.06%2C40.23%20L29.17%2C38.12%20L33.90%2C36.80%20L38.80%2C35.99%20L43.45%2C35.28%20L47.54%2C34.21%20L50.92%2C32.45%20L53.65%2C29.78%20L55.92%2C26.22%20L58.04%2C22.02%20L60.32%2C17.61%20L63.03%2C13.52%20L66.32%2C10.26%20L70.18%2C8.22%20L74.50%2C7.60%20L79.07%2C8.31%20L83.67%2C10.02%20L88.11%2C12.25%20L92.30%2C14.40%20L96.22%2C15.94%20L100.00%2C16.50%20L103.78%2C15.94%20L107.70%2C14.40%20L111.89%2C12.25%20L116.33%2C10.02%20L120.93%2C8.31%20L125.50%2C7.60%20L129.82%2C8.22%20L133.68%2C10.26%20L136.97%2C13.52%20L139.68%2C17.61%20L141.96%2C22.02%20L144.08%2C26.22%20L146.35%2C29.78%20L149.08%2C32.45%20L152.46%2C34.21%20L156.55%2C35.28%20L161.20%2C35.99%20L166.10%2C36.80%20L170.83%2C38.12%20L174.94%2C40.23%20L178.07%2C43.28%20L180.00%2C47.19%20L180.74%2C51.76%20L180.53%2C56.67%20L179.78%2C61.58%20L179.03%2C66.22%20L178.78%2C70.43%20L179.41%2C74.20%20L181.11%2C77.61%20L183.79%2C80.87%20L187.13%2C84.19%20L190.62%2C87.72%20L193.67%2C91.57%20L195.76%2C95.70%20Z%22%2F%3E%3C%2Fsvg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20200%22%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-dasharray%3D%225%207%22%20stroke-linecap%3D%22round%22%20d%3D%22M196.50%2C100.00%20L195.76%2C104.30%20L193.67%2C108.43%20L190.62%2C112.28%20L187.13%2C115.81%20L183.79%2C119.13%20L181.11%2C122.39%20L179.41%2C125.80%20L178.78%2C129.57%20L179.03%2C133.78%20L179.78%2C138.42%20L180.53%2C143.33%20L180.74%2C148.24%20L180.00%2C152.81%20L178.07%2C156.72%20L174.94%2C159.77%20L170.83%2C161.88%20L166.10%2C163.20%20L161.20%2C164.01%20L156.55%2C164.72%20L152.46%2C165.79%20L149.08%2C167.55%20L146.35%2C170.22%20L144.08%2C173.78%20L141.96%2C177.98%20L139.68%2C182.39%20L136.97%2C186.48%20L133.68%2C189.74%20L129.82%2C191.78%20L125.50%2C192.40%20L120.93%2C191.69%20L116.33%2C189.98%20L111.89%2C187.75%20L107.70%2C185.60%20L103.78%2C184.06%20L100.00%2C183.50%20L96.22%2C184.06%20L92.30%2C185.60%20L88.11%2C187.75%20L83.67%2C189.98%20L79.07%2C191.69%20L74.50%2C192.40%20L70.18%2C191.78%20L66.32%2C189.74%20L63.03%2C186.48%20L60.32%2C182.39%20L58.04%2C177.98%20L55.92%2C173.78%20L53.65%2C170.22%20L50.92%2C167.55%20L47.54%2C165.79%20L43.45%2C164.72%20L38.80%2C164.01%20L33.90%2C163.20%20L29.17%2C161.88%20L25.06%2C159.77%20L21.93%2C156.72%20L20.00%2C152.81%20L19.26%2C148.24%20L19.47%2C143.33%20L20.22%2C138.42%20L20.97%2C133.78%20L21.22%2C129.57%20L20.59%2C125.80%20L18.89%2C122.39%20L16.21%2C119.13%20L12.87%2C115.81%20L9.38%2C112.28%20L6.33%2C108.43%20L4.24%2C104.30%20L3.50%2C100.00%20L4.24%2C95.70%20L6.33%2C91.57%20L9.38%2C87.72%20L12.87%2C84.19%20L16.21%2C80.87%20L18.89%2C77.61%20L20.59%2C74.20%20L21.22%2C70.43%20L20.97%2C66.22%20L20.22%2C61.58%20L19.47%2C56.67%20L19.26%2C51.76%20L20.00%2C47.19%20L21.93%2C43.28%20L25.06%2C40.23%20L29.17%2C38.12%20L33.90%2C36.80%20L38.80%2C35.99%20L43.45%2C35.28%20L47.54%2C34.21%20L50.92%2C32.45%20L53.65%2C29.78%20L55.92%2C26.22%20L58.04%2C22.02%20L60.32%2C17.61%20L63.03%2C13.52%20L66.32%2C10.26%20L70.18%2C8.22%20L74.50%2C7.60%20L79.07%2C8.31%20L83.67%2C10.02%20L88.11%2C12.25%20L92.30%2C14.40%20L96.22%2C15.94%20L100.00%2C16.50%20L103.78%2C15.94%20L107.70%2C14.40%20L111.89%2C12.25%20L116.33%2C10.02%20L120.93%2C8.31%20L125.50%2C7.60%20L129.82%2C8.22%20L133.68%2C10.26%20L136.97%2C13.52%20L139.68%2C17.61%20L141.96%2C22.02%20L144.08%2C26.22%20L146.35%2C29.78%20L149.08%2C32.45%20L152.46%2C34.21%20L156.55%2C35.28%20L161.20%2C35.99%20L166.10%2C36.80%20L170.83%2C38.12%20L174.94%2C40.23%20L178.07%2C43.28%20L180.00%2C47.19%20L180.74%2C51.76%20L180.53%2C56.67%20L179.78%2C61.58%20L179.03%2C66.22%20L178.78%2C70.43%20L179.41%2C74.20%20L181.11%2C77.61%20L183.79%2C80.87%20L187.13%2C84.19%20L190.62%2C87.72%20L193.67%2C91.57%20L195.76%2C95.70%20Z%22%2F%3E%3C%2Fsvg%3E");
+  animation: wavyCounterSpin 34s linear infinite;
+}
+
+.hero-avatar-img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  filter: brightness(0.94) contrast(1.06) !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  animation: wavyCounterSpin 22s linear infinite, wavyInnerZoom 5.5s ease-in-out infinite;
+  will-change: rotate, scale;
+}
+
+[data-theme="light"] .hero-avatar-img {
+  filter: contrast(1.06) !important;
+}
+
+@keyframes wavySpin {
+  from { rotate: 0deg; }
+  to { rotate: 360deg; }
+}
+@keyframes wavyCounterSpin {
+  from { rotate: 0deg; }
+  to { rotate: -360deg; }
+}
+@keyframes wavyOuterZoom {
+  0%, 100% { scale: 0.94; }
+  50% { scale: 1.04; }
+}
+@keyframes wavyInnerZoom {
+  0%, 100% { scale: 1.18; }
+  50% { scale: 1.04; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-avatar,
+  .hero-avatar picture,
+  .hero-avatar::before,
+  .hero-avatar::after,
+  .hero-avatar-img {
+    animation: none !important;
+  }
+}
+
+/* === THEME BLUR-CROSSFADE TRANSITION === */
+#theme-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  opacity: 0;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  background: color-mix(in srgb, var(--bg, #050505) 18%, transparent);
+  transition: opacity 460ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity;
+}
+#theme-veil.in {
+  opacity: 1;
+  transition: opacity 280ms cubic-bezier(0.4, 0, 1, 1);
+}
+body.theme-switching,
+body.theme-switching * {
+  transition: background-color 360ms ease, color 220ms ease, border-color 220ms ease !important;
+}
+
+
+/* === AVATAR VERTICAL ALIGN NUDGE === */
+.hero-avatar {
+  margin-top: clamp(14px, 2.2vh, 28px) !important;
+}
+@media (max-width: 860px) {
+  .hero-avatar {
+    margin-top: 8px !important;
+  }
+}

@@ -1,3 +1,30 @@
+
+function __liveThemeBlur(apply) {
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    apply();
+    return { ready: Promise.resolve() };
+  }
+  let veil = document.getElementById("theme-veil");
+  if (!veil) {
+    veil = document.createElement("div");
+    veil.id = "theme-veil";
+    veil.setAttribute("aria-hidden", "true");
+    document.body.appendChild(veil);
+  }
+  clearTimeout(veil._t1);
+  clearTimeout(veil._t2);
+  document.body.classList.add("theme-switching");
+  veil.classList.add("in");
+  veil._t1 = setTimeout(() => {
+    apply();
+    requestAnimationFrame(() => {
+      veil.classList.remove("in");
+      veil._t2 = setTimeout(() => document.body.classList.remove("theme-switching"), 480);
+    });
+  }, 280);
+  return { ready: Promise.resolve() };
+}
+
 /**
  * ===================================================================
  * piezuke_ — Core SPA Application Engine
@@ -323,7 +350,7 @@ function setTheme(t, opts) {
   }
 
   try {
-    const vt = document.startViewTransition(flip);
+    const vt = __liveThemeBlur(flip);
     vt.ready
       .then(() => {
         const { x, y } = origin;
@@ -331,19 +358,7 @@ function setTheme(t, opts) {
           Math.max(x, window.innerWidth - x),
           Math.max(y, window.innerHeight - y),
         );
-        root.animate(
-          {
-            clipPath: [
-              `circle(0px at ${x}px ${y}px)`,
-              `circle(${r}px at ${x}px ${y}px)`,
-            ],
-          },
-          {
-            duration: 520,
-            easing: "cubic-bezier(0.16, 0.84, 0.44, 1)",
-            pseudoElement: "::view-transition-new(root)",
-          },
-        );
+        /* theme crossfade handled by CSS ::view-transition */
       })
       .catch(() => {});
     vt.finished.then(done, done);
@@ -600,6 +615,11 @@ function navigate() {
 
   // Toggle in-notes class to hide global footer during vault view
   document.body.classList.toggle("in-notes", isNotesPath(path));
+  const _pSeg = path.split("/").filter(Boolean);
+  document.body.classList.toggle(
+    "in-post",
+    _pSeg.length > 1 && (_pSeg[0] === slugOf("writeups") || _pSeg[0] === slugOf("projects")),
+  );
 
   if (isInitialLoad) {
     isInitialLoad = false;
@@ -1185,7 +1205,7 @@ function viewPost(arr, slug, page) {
 
   return `
   <div class="wrap" style="padding-top:26px;">
-    <a href="${escapeHTML(hrefFor(page))}" style="font-family:var(--mono); font-size:18.8px; color:var(--muted);">${escapeHTML(P.backLabel)}</a>
+    <a href="${escapeHTML(hrefFor(page))}" style="font-family:var(--mono); font-size:clamp(13px,1.5vw,16px); color:var(--muted);">${escapeHTML(P.backLabel)}</a>
     <div class="postlayout">
       ${
         outline.length > 0
@@ -1253,7 +1273,7 @@ function viewTimeline() {
   return `
   <section class="wrap" style="padding-top:50px;">
     <div class="eyebrow reveal">${escapeHTML(T.eyebrow)}</div>
-    <h1 class="reveal" style="font-size:clamp(46.9px,7.8vw,81.2px); margin:12px 0 8px;">${escapeHTML(T.heading)}</h1>
+    <h1 class="reveal" class="reveal tl-title" style="margin:12px 0 8px;">${escapeHTML(T.heading)}</h1>
     ${T.subtitle ? `<p class="reveal" style="color:var(--muted); max-width:520px; margin-bottom:44px;">${escapeHTML(T.subtitle)}</p>` : ""}
     <div class="tl">
       ${(T.items || []).map(
@@ -2501,4 +2521,90 @@ if ("serviceWorker" in navigator && document.querySelector('meta[name="app-build
     },
     { passive: true },
   );
+})();
+
+/* ========================= MOBILE TOC & HERO SCRAMBLE ========================= */
+(function initMobileTocAndScramble() {
+  const reduced =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---- 1. Subtle Hex-Decode Scramble on Hero Title Hover ---- */
+  const CHARS = "0123456789ABCDEF#$%&@*";
+  function scrambleEl(el) {
+    if (reduced || !el || el.dataset.scrambling === "1") return;
+    const orig = el.dataset.origText || el.textContent;
+    el.dataset.origText = orig;
+    el.dataset.scrambling = "1";
+    let frame = 0;
+    const total = Math.max(12, orig.length * 3);
+    const id = setInterval(() => {
+      const locked = Math.floor((frame / total) * orig.length);
+      let out = "";
+      for (let i = 0; i < orig.length; i++) {
+        if (orig[i] === " " || i < locked) out += orig[i];
+        else out += CHARS[Math.floor(Math.random() * CHARS.length)];
+      }
+      el.textContent = out;
+      if (++frame > total) {
+        clearInterval(id);
+        el.textContent = orig;
+        el.dataset.scrambling = "0";
+      }
+    }, 28);
+  }
+  document.addEventListener("pointerenter", (e) => {
+    const t = e.target;
+    if (t && t.id === "glitch") scrambleEl(t);
+  }, true);
+
+  /* ---- 2. Mobile Floating TOC Pill & Drawer ---- */
+  function syncMobileToc() {
+    let btn = document.getElementById("mob-toc-btn");
+    let drawer = document.getElementById("mob-toc-drawer");
+    const outlineLinks = Array.from(document.querySelectorAll(".postlayout > .outline a"));
+
+    if (!outlineLinks.length) {
+      if (btn) btn.classList.remove("visible");
+      if (drawer) drawer.classList.remove("open");
+      return;
+    }
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.id = "mob-toc-btn";
+      btn.type = "button";
+      btn.textContent = "≡ TOC";
+      btn.setAttribute("aria-label", "Table of contents");
+      document.body.appendChild(btn);
+    }
+    if (!drawer) {
+      drawer = document.createElement("div");
+      drawer.id = "mob-toc-drawer";
+      drawer.innerHTML = '<div class="mob-toc-sheet" role="dialog" aria-label="On this page"><h4>On this page</h4><div id="mob-toc-list"></div></div>';
+      drawer.addEventListener("click", (e) => {
+        if (e.target === drawer) drawer.classList.remove("open");
+      });
+      document.body.appendChild(drawer);
+    }
+    const list = drawer.querySelector("#mob-toc-list");
+    list.innerHTML = outlineLinks
+      .map((a) => `<a href="#${a.dataset.target}" class="${a.className}" data-target="${a.dataset.target}">${escapeHTML(a.textContent)}</a>`)
+      .join("");
+    list.querySelectorAll("a").forEach((a) => {
+      a.onclick = (e) => {
+        e.preventDefault();
+        drawer.classList.remove("open");
+        const target = document.getElementById(a.dataset.target);
+        if (target) target.scrollIntoView({ behavior: "smooth" });
+      };
+    });
+    btn.onclick = () => drawer.classList.add("open");
+    btn.classList.add("visible");
+  }
+
+  const appEl = document.getElementById("app");
+  if (appEl && typeof MutationObserver !== "undefined") {
+    new MutationObserver(() => syncMobileToc()).observe(appEl, { childList: true });
+    syncMobileToc();
+  }
 })();
