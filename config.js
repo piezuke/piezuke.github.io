@@ -11,10 +11,14 @@ const CONFIG = {
     // With it set, `node manage.js sync` also builds a page for every writeup/project
     // (its own title, description and share image for Google and Discord/Twitter
     // previews), plus sitemap.xml and feed.xml. Leave "" to switch all of that off.
-    url: "",
-    author: "PIEzuke", // author name used in the RSS feed and for search engines
-    feed: { enabled: true, title: "", description: "" }, // feed.xml ("" = use site name / description)
-    description: "CTF writeups, projects, notes, etc...", // meta + social cards
+    url: "https://piezuke.github.io",
+    author: "piezuke", // author name used in the RSS feed and for search engines
+    feed: {
+      enabled: true,
+      title: "piezuke",
+      description: "Welcome to my sacred archives",
+    }, // feed.xml ("" = use site name / description)
+    description: "My CTF writeups, projects, notes, etc", // meta + social cards
     titleTemplate: "{page} — {site}", // tab title for inner pages
     avatar: { webp: "media/pfp.webp", jpg: "media/pfp.jpg" }, // profile picture
     favicon: "media/pfp.webp",
@@ -29,9 +33,9 @@ const CONFIG = {
     projects: "/projects",
     notes: "/notes",
     timeline: "/timeline",
-    about: "/me",
+    about: "/about",
     // old addresses that should keep working:  { "old-slug": "page key" }
-    redirects: { story: "timeline", about: "about" },
+    redirects: { story: "timeline", me: "about" },
   },
 
   /* ------------------------------- NAV ------------------------------- */
@@ -45,7 +49,7 @@ const CONFIG = {
       { label: "Projects", page: "projects" },
       { label: "Notes", page: "notes" },
       { label: "Timeline", page: "timeline" },
-      { label: "Me", page: "about" },
+      { label: "About", page: "about" },
     ],
   },
 
@@ -91,7 +95,7 @@ const CONFIG = {
       // opens. 700 = 0.7 seconds. 0 = as short as possible.
       minDuration: 700,
       // ...and when you click to another page. 0 = swap instantly (fastest).
-      pageChangeDuration: 500,
+      pageChangeDuration: 0,
       // The loading screen also waits for the web fonts and the pictures that are on
       // screen (on first load and on every page change), so nothing pops in late.
       waitForImages: true,
@@ -99,7 +103,7 @@ const CONFIG = {
       maxDuration: 6000,
       // If the loading screen is still up after this long, its text changes to `slow`.
       slowAfter: 3500,
-      slow: "Taking longer than usual... still on it.",
+      slow: "Taking longer than usual... patience is key!",
       // Browser Back / Forward buttons skip the loading screen entirely.
       skipOnBackForward: true,
       initial: "Connecting to PIE's Archives...",
@@ -167,30 +171,51 @@ const CONFIG = {
     // Big call-to-action at the top of the footer. The button opens the first
     // contact (in pages.about.contacts) whose icon is "email"; no email = no button.
     ctaHeading: "Say hi.",
-    ctaText: "Questions, collabs, or a CTF that needs another teammate? My inbox is open.",
+    ctaText: "Questions or feedbacks, my inbox is open.",
     ctaButton: "Send an email",
 
     // Column headings (the columns are built from your nav, latest writeups and contacts)
     navHeading: "Explore",
     latestHeading: "Latest writeups",
-    socialsHeading: "Elsewhere",
-
+    socialsHeading: "My Socials",
   },
 
   /* ------------------------------ PAGES ------------------------------ */
   pages: {
     /* ---- HOME ---- */
     home: {
-      title: "pieBlog",
+      title: "PieBlog",
       hero: {
         status: "",
         title: "PIEzuke",
-        avatarAlt: "PIEzuke",
+        avatar: {
+          webp: "media/pfp.webp",
+          jpg: "media/pfp.jpg",
+        },
+        avatarAlt: "piezuke avatar",
         roles: [
-          "Exploiting binaries",
-          "I use Arch btw",
-          "CTF player @ teambi0s",
-          "Music composition",
+          "Student at Amrita University",
+          "I do PWN :D",
+          "Big time Larper",
+          "Small time Systems Programmer",
+          "I aspire to be paid and jobless",
+        ],
+        marquee: [
+          "Bad idea if your gonna read this at all(worse if again)",
+          "There's nothing here",
+          "I said there aint, nothing",
+          "Maybe there is",
+          "And here it is",
+          "Its all about how you see life",
+          "All about perspective",
+          "Just like Einstein said",
+          "Time is indeed relative",
+          "But Guess What!",
+          "Chicken Butt!!!",
+          "Sorry",
+          "Not really",
+          "Again?",
+          "Really??",
         ],
         subtitle:
           "CTF writeups, projects and half-organised notes live here. Beware of the ones whose names shall not be uttered",
@@ -229,7 +254,7 @@ const CONFIG = {
           {
             page: "timeline",
             title: "Timeline",
-            text: "My history, My story, Mystory, Mystery, Iam the Mystery. sry not sry.",
+            text: "Past snapshots and some non-chalant stuff",
             count: "{n} entries",
             countOne: "{n} entry",
           },
@@ -272,10 +297,10 @@ const CONFIG = {
 
     /* ---- WRITEUPS (list page) ---- */
     writeups: {
-      title: "pieBlog - Writeups",
+      title: "Writeups",
       heading: "Latest Writeups",
       subtitle:
-        "Some CTF challenges or problems I solved which felt worth documenting.",
+        "Some CTF challenges or just challenges that I solved which seemed worth documenting.",
       entries: "{n} entries",
       entriesOne: "{n} entry",
       filterAll: "all",
@@ -288,7 +313,7 @@ const CONFIG = {
     projects: {
       title: "Projects",
       heading: "Latest Projects",
-      subtitle: "Some stuff i built on a whim and not on a whim too ig",
+      subtitle: "Some stuff i built off on a whim and not on a whim too ig",
       entries: "{n} entries",
       entriesOne: "{n} entry",
       filterAll: "all",
@@ -300,11 +325,12 @@ const CONFIG = {
     /* ---- SINGLE WRITEUP / PROJECT PAGE ---- */
     post: {
       readTime: "{n} min read",
-      outlineTitle: "on this page",
-      suggestedTitle: "suggested reads",
+      outlineTitle: "On this page",
+      suggestedTitle: "Suggested reads",
       author: {
         name: "PIEzuke",
-        tagline: "A bit about myself",
+        tagline:
+          '"Maturity is knowing better, while true wisdom is in knowing which shenanigans are worth it anyway."',
       },
       // Extra frontmatter fields (ctf, category, points, difficulty, ...) are shown in
       // the post header. `labels` renames them; anything not listed shows as written.
@@ -329,7 +355,16 @@ const CONFIG = {
       flags: {
         enabled: true,
         hint: "click to reveal",
-        prefixes: ["flag", "ctf", "bi0s", "teambi0s", "pico", "picoctf", "htb", "thm"],
+        prefixes: [
+          "flag",
+          "ctf",
+          "bi0s",
+          "teambi0s",
+          "pico",
+          "picoctf",
+          "htb",
+          "thm",
+        ],
         generic: true, // also blur anything shaped like  word{something-long}
       },
     },
@@ -337,7 +372,7 @@ const CONFIG = {
     /* ---- NOTES VAULT ---- */
     notes: {
       title: "Notes",
-      vaultTitle: "VAULT / NOTES",
+      vaultTitle: "Notes Tree",
       expandAll: "Expand all folders",
       collapseAll: "Collapse all folders",
       expandIcon: "⊞",
@@ -354,7 +389,7 @@ const CONFIG = {
     /* ---- TIMELINE ---- */
     timeline: {
       title: "Timeline",
-      eyebrow: "journey log",
+      eyebrow: "Event Logging",
       heading: "Some of the stuff that happened",
       subtitle: "A chronological record of my existence",
       items: [
@@ -369,9 +404,14 @@ const CONFIG = {
           body: "Did my first buffer overflow, assembly and memory got fun, Started off playin CTFs as team",
         },
         {
-          date: "2026",
-          title: "Present day",
-          body: "Welp, Im surviving. Sort off.",
+          date: "2026 October",
+          title: "Found out about the wonders of Systems programming",
+          body: "Well, now this is interesting. Just as I say, Larp it till you make it",
+        },
+        {
+          date: "Present day",
+          title: "Where iam",
+          body: "HOME!!",
         },
       ],
     },
@@ -379,9 +419,16 @@ const CONFIG = {
     /* ---- ABOUT ---- */
     about: {
       title: "About",
+      avatar: {
+        webp: "media/pfp.webp",
+        jpg: "media/pfp.jpg",
+      },
+      avatarAlt: "PIEzuke",
+      captionTitle: "PIEzuke",
+      captionRoles: ["Binary Exploitation", "CTF player @ teambi0s"],
       eyebrow: "From the author",
-      heading: "A bit about myself",
-      bio: "Hello. Myself PIE. I go by pie-zuke cus some guy(s) have already claimed the name 'PIE' in most platforms. So I can't be niche no more, but feel free to js use PIE. Also its 'zyuk', NOT ZU-KEH. Anyway, Im a CS student at Amrita, and a part of teambi0s under the Binary Exploitation category. Buy me coffee if u see me(unlikely cus I hate touching grass). I occationally take on random side projects which may or maynot include building a wholeahh operating system(I wish I had the motivation). Feel free to try out that music player on the on the left or on top if ur on phone, except idk if it will be working by the time I post this. Plus I still haven't finished composing even a single tune at the time of writing this. Bluh",
+      heading: "about myself",
+      bio: "Hello! Myself PIE. I go by pie-zuke, PIE for short. Also its 'zyuk', NOT ZU-KEH.\n Anyway, Im a CS student at Amrita, and a part of teambi0s under the Binary Exploitation category. Buy me coffee if u see me(unlikely cus I hate touching grass). I occationally take on random side projects which may or maynot include building a wholeahh operating system(I wish I had the motivation). Feel free to try out that music player on the on the left or on top if ur on phone, except idk if it will be working by the time I post this. Plus I still haven't finished composing even a single tune at the time of writing this. Bluh",
       interestsHeading: "Interests",
       skills: [
         "Binary Exploitation",

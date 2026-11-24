@@ -63,7 +63,7 @@ async function pageFirstFromNetwork(req) {
     const cached = await cache.match(req);
     return cached || (await network);
   } catch (err) {
-    const cached = (await cache.match(req)) || (await cache.match(new URL("index.html", self.registration.scope).href));
+    const cached = (await cache.match(req)) || (await cache.match(new URL("/index.html", self.location.origin).href));
     return cached || Response.error();
   }
 }

@@ -111,6 +111,75 @@ function build(opts = {}) {
     fs.writeFileSync(p, html);
   }
 
+  /* ---- 3b. auto-compute CSP sha256 hash for 404.html inline script ---- */
+  const p404 = path.join(out, "404.html");
+  if (fs.existsSync(p404)) {
+    let h404 = fs.readFileSync(p404, "utf8");
+    const m = h404.match(/<script>([\s\S]*?)<\/script>/i);
+    if (m) {
+      const hash = crypto.createHash("sha256").update(m[1]).digest("base64");
+      h404 = h404.replace(/script-src [^;]+;/, `script-src 'sha256-${hash}';`);
+      fs.writeFileSync(p404, h404);
+    }
+  }
+
+  /* ---- 3c. generate clean-URL route pages (dist/<route>/index.html) ---- */
+  const indexHtml = fs.readFileSync(path.join(out, "index.html"), "utf8");
+  const dataMod = require(path.join(ROOT, "data.js"));
+  const escAttr = (str) => String(str || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  const writeRoutePage = (routePath, title, desc, image) => {
+    const dir = path.join(out, ...routePath.split("/").filter(Boolean));
+    fs.mkdirSync(dir, { recursive: true });
+    let html = indexHtml;
+    if (title) {
+      html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escAttr(title)}</title>`);
+      html = html.replace(/(<meta\s+property="og:title"\s+content=")[^"]*(")/i, `$1${escAttr(title)}$2`);
+    }
+    if (desc) {
+      html = html.replace(/(<meta\s+name="description"\s+content=")[^"]*(")/i, `$1${escAttr(desc)}$2`);
+      html = html.replace(/(<meta\s+property="og:description"\s+content=")[^"]*(")/i, `$1${escAttr(desc)}$2`);
+    }
+    if (image) {
+      html = html.replace(/(<meta\s+property="og:image"\s+content=")[^"]*(")/i, `$1${escAttr(image)}$2`);
+    }
+    fs.writeFileSync(path.join(dir, "index.html"), html);
+  };
+
+  for (const r of ["writeups", "projects", "notes", "timeline", "about"]) {
+    writeRoutePage(r, `${r[0].toUpperCase() + r.slice(1)} — piezuke`);
+  }
+  for (const w of dataMod.WRITEUPS || []) {
+    writeRoutePage(`writeups/${w.slug}`, `${w.title} — piezuke`, w.excerpt, w.image);
+  }
+  for (const p of dataMod.PROJECTS || []) {
+    writeRoutePage(`projects/${p.slug}`, `${p.title} — piezuke`, p.excerpt, p.image);
+  }
+
+  /* ---- 3d. generate sitemap.xml & feed.xml ---- */
+  const siteBase = "https://piezuke.github.io";
+  const xmlEsc = (str) => String(str || "").replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&apos;", '"': "&quot;" }[c]));
+  const urls = ["/", "/writeups", "/projects", "/notes", "/timeline", "/about"];
+  for (const w of dataMod.WRITEUPS || []) urls.push(`/writeups/${w.slug}`);
+  for (const p of dataMod.PROJECTS || []) urls.push(`/projects/${p.slug}`);
+
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    urls.map((u) => `  <url><loc>${siteBase}${u}</loc></url>`).join("\n") +
+    `\n</urlset>\n`;
+  fs.writeFileSync(path.join(out, "sitemap.xml"), sitemap);
+
+  const feedItems = [
+    ...(dataMod.WRITEUPS || []).map((w) => ({ ...w, link: `${siteBase}/writeups/${w.slug}` })),
+    ...(dataMod.PROJECTS || []).map((p) => ({ ...p, link: `${siteBase}/projects/${p.slug}` })),
+  ];
+  const rss = `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel>\n` +
+    `  <title>piezuke</title>\n  <link>${siteBase}</link>\n  <description>CTF writeups, projects, notes</description>\n` +
+    feedItems.map((it) =>
+      `  <item><title>${xmlEsc(it.title)}</title><link>${xmlEsc(it.link)}</link><guid>${xmlEsc(it.link)}</guid><description>${xmlEsc(it.excerpt || "")}</description></item>`
+    ).join("\n") +
+    `\n</channel></rss>\n`;
+  fs.writeFileSync(path.join(out, "feed.xml"), rss);
+
   /* ---- 4. service worker ---- */
   const v = (f) => `${f}?v=${versioned.get(f)}`;
   const precache = [

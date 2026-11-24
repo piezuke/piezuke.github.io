@@ -1,5 +1,5 @@
 # Only used when GitHub Pages is set to "Deploy from a branch" (Jekyll).
-# With the included GitHub Actions workflow you don't need this file.
+# With the included GitHub Actions workflow we don't need this file.
 include: [".well-known"]
 exclude:
   - node_modules

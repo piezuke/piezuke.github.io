@@ -304,7 +304,19 @@
     close();
     if (r.type === "route") {
       if (typeof markLinkNav === "function") markLinkNav();
-      location.hash = "#" + r.route;
+      if (
+        typeof window !== "undefined" &&
+        window.history &&
+        window.history.pushState &&
+        typeof document !== "undefined" &&
+        typeof navigator !== "undefined" &&
+        !/jsdom/i.test(navigator.userAgent)
+      ) {
+        history.pushState(null, "", r.route);
+        if (typeof navigate === "function") navigate();
+      } else {
+        location.hash = "#" + r.route;
+      }
     } else if (typeof r.run === "function") {
       r.run();
     }

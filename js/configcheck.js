@@ -67,7 +67,16 @@
     pages: {
       home: {
         title: S,
-        hero: { status: S, title: S, avatarAlt: S, roles: [S], subtitle: S, chips: [S] },
+        hero: {
+          status: S,
+          title: S,
+          avatarAlt: S,
+          avatar: { webp: S, jpg: S },
+          roles: [S],
+          marquee: [S],
+          subtitle: S,
+          chips: [S],
+        },
         buttons: [{ label: S, page: S, url: S, style: S }],
         explore: {
           heading: S,
@@ -89,7 +98,7 @@
       },
       post: {
         readTime: S, outlineTitle: S, suggestedTitle: S,
-        author: { name: S, tagline: S },
+        author: { name: S, tagline: S, avatar: { webp: S, jpg: S } },
         meta: { labels: { [ANY]: S } },
         copyLink: { label: S, copied: S, title: S },
         sectionLink: { title: S, copied: S },
@@ -108,6 +117,10 @@
       about: {
         title: S, eyebrow: S, heading: S, bio: S, interestsHeading: S,
         skills: [S], socialsHeading: S,
+        avatar: { webp: S, jpg: S },
+        avatarAlt: S,
+        captionTitle: S,
+        captionRoles: [S],
         contacts: [{ label: S, url: S, copy: S, icon: S, iconSvg: S, handle: S, hint: S, copiedText: S, wide: B }],
       },
       notFound: { title: S, heading: S, text: S },

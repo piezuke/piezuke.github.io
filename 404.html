@@ -1,79 +1,35 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wB91O0g8Fif7y8nf+DUXdC8d6CU2HLiXNuAl6/8YekU='; base-uri 'none'; form-action 'none';" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="darkreader-lock" />
-        <title>404 — Redirecting</title>
-        <meta http-equiv="refresh" content="1; url=./#/" />
-        <script>
-            (function () {
-                var loc = window.location;
-                var parts = loc.pathname.split("/").filter(Boolean);
-                // KEEP IN SYNC with CONFIG.routes in config.js (slugs without "/").
-                // This tiny page cannot load config.js (it can be served from any depth).
-                var routeNames = new Set([
-                    "writeups",
-                    "projects",
-                    "notes",
-                    "story",
-                    "timeline",
-                    "me",
-                    "about",
-                ]);
-                var routeStart = parts.findIndex((part) => routeNames.has(part));
-                var baseParts = [];
-                var routeParts = [];
-                if (routeStart >= 0) {
-                    baseParts = parts.slice(0, routeStart);
-                    routeParts = parts.slice(routeStart);
-                } else if (
-                    parts.length &&
-                    !parts[parts.length - 1].endsWith(".html")
-                ) {
-                    baseParts = parts.slice(0, 1);
-                    routeParts = parts.slice(1);
-                } else if (parts.length > 1) {
-                    baseParts = parts.slice(0, -1);
-                }
-                var base = baseParts.length
-                    ? "/" + baseParts.join("/") + "/"
-                    : "/";
-                var target = base + "#/" + routeParts.join("/");
-                loc.replace(target);
-            })();
-        </script>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; base-uri 'none'; form-action 'none';" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="darkreader-lock" />
+    <title>404 — Redirecting</title>
+    <script>
+      (function () {
+        try {
+          sessionStorage.setItem(
+            "spa_redirect",
+            location.pathname + location.search + location.hash
+          );
+        } catch (e) {}
+        location.replace("/");
+      })();
+    </script>
     <style>
-        :root { --bg: #050505; --fg: #fafafa; --dim: #a6a6a6; color-scheme: dark light; }
-        @media (prefers-color-scheme: light) {
-            :root { --bg: #f6f6f6; --fg: #050505; --dim: #4d4d4d; }
-        }
+      :root { --bg: #050505; --fg: #fafafa; --dim: #a6a6a6; color-scheme: dark light; }
+      @media (prefers-color-scheme: light) {
+        :root { --bg: #f6f6f6; --fg: #050505; --dim: #4d4d4d; }
+      }
     </style>
-    </head>
-    <body
-        style="
-            background: var(--bg);
-            color: var(--fg);
-            font-family: ui-monospace, monospace;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            text-align: center;
-        "
-    >
-        <div>
-            <h1 style="font-size: 36px; margin: 0 0 10px">404</h1>
-            <p style="color: var(--dim); font-size: 16px">
-                Page not found. Redirecting to
-                <a
-                    href="./#/"
-                    style="color: var(--fg); text-decoration: underline"
-                    >home</a
-                >...
-            </p>
-        </div>
-    </body>
+  </head>
+  <body style="background:var(--bg);color:var(--fg);font-family:ui-monospace,monospace;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;">
+    <div>
+      <h1 style="font-size:36px;margin:0 0 10px">404</h1>
+      <p style="color:var(--dim);font-size:16px">
+        Redirecting to <a href="/" style="color:var(--fg);text-decoration:underline">home</a>...
+      </p>
+    </div>
+  </body>
 </html>
