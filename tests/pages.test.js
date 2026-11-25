@@ -20,7 +20,7 @@ describe("every page renders cleanly", () => {
   }
 
   test("legacy #/story and #/about still reach their pages", async () => {
-    for (const [hash, needle] of [["#/story", "journey"], ["#/about", "From the author"]]) {
+    for (const [hash, needle] of [["#/story", "chronological"], ["#/about", "From the author"]]) {
       const s = load({ hash, data: FIXTURE_DATA });
       await sleep(300);
       assert.match(s.document.getElementById("app").textContent.toLowerCase(), new RegExp(needle.toLowerCase()), hash);
@@ -47,7 +47,7 @@ describe("home page", () => {
     await sleep(300);
     assert.ok(s.document.querySelector(".hero-avatar-img"));
     assert.ok(s.document.querySelectorAll(".explore").length >= 1);
-    assert.ok(s.document.querySelector('a.card[href="#/writeups/heap-overflow"]'), "latest writeup card links to the post");
+    assert.ok(s.document.querySelector('a.card[href="/writeups/heap-overflow"]'), "latest writeup card links to the post");
     s.close();
   });
 });

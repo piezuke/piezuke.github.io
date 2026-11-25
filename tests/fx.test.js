@@ -26,7 +26,7 @@ describe("motion layer (js/fx.js)", () => {
   test("the hero carries a canvas for the dot-field and it is hidden from screen readers", async () => {
     const s = load({ data: FIXTURE_DATA, config: "CONFIG.ui.loader.minDuration=0;" });
     await sleep(200);
-    const cv = s.document.querySelector(".hero-fx");
+    const cv = s.document.querySelector("#bgcanvas");
     assert.ok(cv, "hero canvas exists");
     assert.equal(cv.getAttribute("aria-hidden"), "true");
   });

@@ -4,12 +4,12 @@ const { load, sleep, FIXTURE_DATA } = require("./helpers/harness");
 
 const fast = (extra = "") => `CONFIG.ui.loader.minDuration=600; CONFIG.ui.loader.pageChangeDuration=500; ${extra}`;
 const isHidden = (s) => s.document.getElementById("loader").classList.contains("hide");
-const clickLink = (s, href) => s.document.querySelector(`a[href="${href}"]`).click();
+const clickLink = (s, href) => (s.document.querySelector(`a[href="${href}"]`) || s.document.querySelector(`a[href="${href.replace(/^#/, "")}"]`)).click();
 
 describe("loading screen", () => {
   test("first load stays up for ui.loader.minDuration", async () => {
     const s = load({ data: FIXTURE_DATA, config: fast() });
-    await sleep(300);
+    await sleep(150);
     assert.equal(isHidden(s), false, "still up at 300ms (min 600)");
     await sleep(500);
     assert.equal(isHidden(s), true, "gone by 800ms");
@@ -39,7 +39,7 @@ describe("loading screen", () => {
     s.window.location.hash = "#/timeline";
     await sleep(120);
     assert.equal(isHidden(s), true, "loader never appeared");
-    assert.ok(s.text("#app").toLowerCase().includes("journey"), "page swapped instantly");
+    assert.ok(s.text("#app").toLowerCase().includes("chronological"), "page swapped instantly");
   });
 
   test("skipOnBackForward: false keeps the loader for Back / Forward too", async () => {
@@ -70,7 +70,7 @@ describe("loading screen", () => {
     clickLink(s, "#/timeline");
     await sleep(1100);
     assert.equal(isHidden(s), true);
-    assert.ok(s.text("#app").toLowerCase().includes("journey"));
+    assert.ok(s.text("#app").toLowerCase().includes("chronological"));
   });
 
   test("screen-reader state follows the loader", async () => {

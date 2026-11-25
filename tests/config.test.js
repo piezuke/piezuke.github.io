@@ -34,13 +34,13 @@ describe("config.js controls every piece of text and every URL slug", () => {
     assert.equal(d.title, "ZED HOME");
     assert.equal(d.documentElement.lang, "fr");
     assert.equal(T(s, "#cfg-brand"), "ZED");
-    assert.deepEqual([...d.querySelectorAll("nav.links a")].map((a) => a.textContent + "=" + a.getAttribute("href")), ["HOME!=#/", "WRITE=#/ctf", "ABOUT!=#/about", "Ext=#/custom"]);
+    assert.deepEqual([...d.querySelectorAll("nav.links a")].map((a) => a.textContent + "=" + a.getAttribute("href")), ["HOME!=/", "WRITE=/ctf", "ABOUT!=/about", "Ext=/custom"]);
     const app = T(s, "#app");
     assert.ok(app.includes("HELLO") && app.includes("custom status"));
-    assert.deepEqual([...d.querySelectorAll(".cta a")].map((a) => a.getAttribute("href")), ["#/ctf", "https://example.com"]);
+    assert.deepEqual([...d.querySelectorAll(".cta a")].map((a) => a.getAttribute("href")), ["/ctf", "https://example.com"]);
     assert.ok(app.includes("LOOK AROUND") && app.includes("VaultCard") && /1 thing\b/.test(app), "explore singular count");
     assert.ok(app.includes("NEWEST CTF") && !app.includes("Latest Projects"));
-    assert.equal(d.querySelector("a.card").getAttribute("href"), "#/ctf/heap-overflow", "card link follows the new slug");
+    assert.equal(d.querySelector("a.card").getAttribute("href"), "/ctf/heap-overflow", "card link follows the new slug");
     assert.match(T(s, ".global-footer"), /custom footer/);
     assert.match(T(s, ".global-footer"), /\d{4}/, "{year} filled in");
     assert.ok(T(s, "#cmdk-btn").includes("find stuff"));
@@ -53,7 +53,7 @@ describe("config.js controls every piece of text and every URL slug", () => {
   const pages = [
     ["#/ctf", (s) => { assert.equal(s.document.title, "[zedsite] :: CTFs"); assert.ok(T(s, "#app").includes("CTF HEADING") && T(s, "#app").includes("2 items")); }],
     ["#/ctf/heap-overflow", (s) => { assert.equal(s.document.title, "[zedsite] :: Heap Overflow 101"); const a = T(s, "#app"); assert.ok(a.includes("<< BACK TO CTFS") && a.includes("minutes") && a.includes("more stuff") && a.includes("AUTH")); }],
-    ["#/vault", (s) => { assert.ok(T(s, "#app").includes("MY VAULT")); assert.ok(s.document.body.classList.contains("in-notes")); assert.ok(s.document.querySelector('a.notenode[href="#/vault/kernel-rop"]')); }],
+    ["#/vault", (s) => { assert.ok(T(s, "#app").includes("MY VAULT")); assert.ok(s.document.body.classList.contains("in-notes")); assert.ok(s.document.querySelector('a.notenode[href="/vault/kernel-rop"]')); }],
     ["#/journey", (s) => { assert.ok(T(s, "#app").includes("MY JOURNEY") && T(s, "#app").includes("T1")); }],
     ["#/story", (s) => assert.ok(T(s, "#app").includes("MY JOURNEY"), "legacy slug redirects")],
     ["#/me", (s) => assert.ok(T(s, "#app").includes("ABOUT HEADING"), "legacy slug redirects")],
@@ -108,7 +108,7 @@ describe("config checker", () => {
   });
 
   test("flags duplicate URL slugs and bad redirects", () => {
-    const issues = checker(`CONFIG.routes.writeups = "/me"; CONFIG.routes.redirects = { story: "timelin" };`);
+    const issues = checker(`CONFIG.routes.writeups = "/about"; CONFIG.routes.redirects = { story: "timelin" };`);
     assert.ok(issues.some((i) => /already used/.test(i.message)));
     assert.ok(issues.some((i) => /not a page/.test(i.message)));
   });
@@ -127,7 +127,7 @@ describe("canonical address", () => {
     await sleep(250);
     assert.equal(on.document.querySelector('link[rel="canonical"]').getAttribute("href"), "https://example.org/");
     assert.equal(on.document.querySelector('meta[property="og:url"]').getAttribute("content"), "https://example.org/");
-    const off = load({ data: FIXTURE_DATA });
+    const off = load({ data: FIXTURE_DATA, config: 'CONFIG.site.url="";' });
     await sleep(250);
     assert.equal(off.document.querySelector('link[rel="canonical"]'), null);
   });

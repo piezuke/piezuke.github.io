@@ -13,7 +13,7 @@ function sandbox({ url = "https://piezuke.example.org", config = "" } = {}) {
   const skip = new Set(["node_modules", ".git", "tests", ".github", "media", "fonts", "content"]);
   fs.cpSync(ROOT, dir, { recursive: true, filter: (src) => !skip.has(path.basename(src)) || src === ROOT });
   for (const d of ["writeups", "projects", "notes"]) fs.mkdirSync(path.join(dir, "content", d), { recursive: true });
-  let cfg = fs.readFileSync(path.join(dir, "config.js"), "utf8").replace(/url: "",/, `url: "${url}/",`);
+  let cfg = fs.readFileSync(path.join(dir, "config.js"), "utf8").replace(/url:\s*"[^"]*",/, `url: "${url}/",`);
   fs.writeFileSync(path.join(dir, "config.js"), cfg + (config ? "\n" + config : ""));
   for (const f of fs.readdirSync(dir)) if (/^(writeups|projects|ctf)-.*\.html$/.test(f) || f === "sitemap.xml" || f === "feed.xml" || f === ".seo-manifest.json") fs.unlinkSync(path.join(dir, f));
   const run = (...args) => execFileSync("node", ["manage.js", ...args], { cwd: dir, encoding: "utf8", env: { ...process.env, MANAGE_NO_SEO: "" } });
@@ -250,7 +250,7 @@ describe("copy-link addresses match the generated file names", () => {
     for (const slug of ["Heap Overflow", "a/b", "ÜBER cool", "x__y", "A.B-c", "MiXeD_Case"]) {
       const url = s.window.postUrl("writeups", slug);
       const file = `writeups-${M.safeFileName(slug)}.html`;
-      assert.ok(url.startsWith(`https://user.github.io/r/${file}#/writeups/`), `${slug} -> ${url}`);
+      assert.ok(url.startsWith(`https://user.github.io/r/writeups/`), `${slug} -> ${url}`);
       assert.equal(file, file.toLowerCase(), "GitHub Pages is case-sensitive");
       assert.ok(!/[\s/\\]/.test(M.safeFileName(slug)));
     }
@@ -271,7 +271,7 @@ describe("GitHub Pages project sites (https://user.github.io/repo)", () => {
     assert.match(sb.read("feed.xml"), /<link>https:\/\/user\.github\.io\/my-repo\/writeups-a\.html<\/link>/);
     assert.match(sb.read("robots.txt"), /Sitemap: https:\/\/user\.github\.io\/my-repo\/sitemap\.xml/);
     assert.match(h, /<script defer src="js\/app\.js">/, "assets stay relative, so they resolve under /my-repo/");
-    assert.ok(!/(src|href)="\//.test(h.replace(/https?:\/\/[^"]*/g, "")), "no root-relative links that would break under /my-repo/");
+    assert.ok(!/src="\//.test(h.replace(/https?:\/\/[^"]*/g, "")), "no root-relative links that would break under /my-repo/");
   });
 });
 

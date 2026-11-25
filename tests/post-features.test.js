@@ -86,15 +86,15 @@ describe("sharing", () => {
     const copied = withClipboard(s);
     s.document.getElementById("sharebtn").click();
     await sleep(50);
-    assert.deepEqual(copied, ["https://example.org/writeups-heap-overflow.html#/writeups/heap-overflow"]);
+    assert.deepEqual(copied, ["https://example.org/writeups/heap-overflow"]);
     assert.equal(s.text("#sharebtn"), "link copied ✓");
   });
   test("...and the current page + route when it isn't", async () => {
-    const s = await post();
+    const s = await post({ config: 'CONFIG.site.url="";' });
     const copied = withClipboard(s);
     s.document.getElementById("sharebtn").click();
     await sleep(50);
-    assert.deepEqual(copied, ["http://localhost/#/writeups/heap-overflow"]);
+    assert.deepEqual(copied, ["http://localhost/writeups/heap-overflow"]);
   });
   test("every h2/h3 gets a '#' that copies a link to that section", async () => {
     const s = await post({ config: 'CONFIG.site.url="https://example.org";' });
@@ -105,7 +105,7 @@ describe("sharing", () => {
     const h = s.document.querySelector(".article-body h2[id]");
     h.querySelector(".h-link").click();
     await sleep(50);
-    assert.equal(copied[0], `https://example.org/writeups-heap-overflow.html#/writeups/heap-overflow?h=${h.id}`);
+    assert.equal(copied[0], `https://example.org/writeups/heap-overflow?h=${h.id}`);
   });
   test("opening a section link scrolls to that section", async () => {
     const probe = await post();

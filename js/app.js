@@ -529,7 +529,7 @@ document.addEventListener(
       window.history &&
       window.history.pushState &&
       typeof navigator !== "undefined" &&
-      !/jsdom/i.test(navigator.userAgent)
+      (isInternalPath || !/jsdom/i.test(navigator.userAgent))
     ) {
       const cleanPath = isHashRoute ? raw.slice(1) : raw;
       e.preventDefault();

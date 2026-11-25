@@ -19,7 +19,7 @@ describe("accessibility", () => {
   test("page changes are announced to screen readers", async () => {
     const s = load({ data: FIXTURE_DATA, config: "CONFIG.ui.loader.pageChangeDuration=200;" });
     await sleep(2300);
-    s.document.querySelector('a[href="#/timeline"]').click();
+    s.document.querySelector('a[href="/timeline"]').click();
     await sleep(600);
     const note = s.text("#sr-announcer");
     assert.match(note, /^Navigated to /);

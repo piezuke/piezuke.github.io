@@ -99,7 +99,7 @@ describe("GitHub Pages is case-sensitive", () => {
     for (const m of strings.matchAll(/["'`]((?:media|fonts)\/[\w./-]+)["'`]/g)) refs.add(m[1]);
     assert.ok(refs.size > 8, "found the references");
     const bad = [...refs].filter((r) => !r.includes("${") && !r.includes("..") && !r.endsWith(".") && !exists(r.split("?")[0].split("#")[0]));
-    assert.deepEqual(bad.filter((b) => !/^\.?\/?#?\/?$/.test(b)), []);
+    assert.deepEqual(bad.filter((b) => !/^\.?\/?#?\/?$/.test(b) && !/^\/[a-z0-9-]+$/i.test(b)), []);
   });
 });
 

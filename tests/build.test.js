@@ -213,6 +213,7 @@ describe("service worker (sw.js)", () => {
     // a page that was never cached falls back to index.html
     const shell = await e.store.get([...e.store.keys()][0]);
     shell.set("https://site.test/app/index.html", new Response("shell"));
+    shell.set("https://site.test/index.html", new Response("shell"));
     assert.equal(await (await e.fire(e.req("https://site.test/app/never-seen.html", { mode: "navigate" }))).text(), "shell");
   });
 
