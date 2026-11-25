@@ -2232,7 +2232,8 @@ function initConfig() {
   if (siteUrl && !document.querySelector('link[rel="canonical"]')) {
     const link = document.createElement("link");
     link.rel = "canonical";
-    link.href = siteUrl + "/";
+    const curPath = (window.location && window.location.pathname) ? window.location.pathname : "/";
+    link.href = siteUrl + (curPath.endsWith("/") ? curPath : curPath + "/");
     document.head.appendChild(link);
     if (!document.querySelector('meta[property="og:url"]')) {
       const og = document.createElement("meta");

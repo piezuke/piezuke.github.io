@@ -13,3 +13,5 @@ Disallow: /
 
 User-agent: Claude-Web
 Disallow: /
+
+Sitemap: https://piezuke.github.io/sitemap.xml

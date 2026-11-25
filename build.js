@@ -128,9 +128,12 @@ function build(opts = {}) {
   const dataMod = require(path.join(ROOT, "data.js"));
   const escAttr = (str) => String(str || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  const writeRoutePage = (routePath, title, desc, image) => {
-    const dir = path.join(out, ...routePath.split("/").filter(Boolean));
+  const siteBase = "https://piezuke.github.io";
+  const writeRoutePage = (routePath, title, desc, image, bodyHtml) => {
+    const clean = routePath.replace(/^\/+|\/+$/g, "");
+    const dir = path.join(out, ...clean.split("/").filter(Boolean));
     fs.mkdirSync(dir, { recursive: true });
+    const pageUrl = clean ? `${siteBase}/${clean}/` : `${siteBase}/`;
     let html = indexHtml;
     if (title) {
       html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escAttr(title)}</title>`);
@@ -143,6 +146,12 @@ function build(opts = {}) {
     if (image) {
       html = html.replace(/(<meta\s+property="og:image"\s+content=")[^"]*(")/i, `$1${escAttr(image)}$2`);
     }
+    const seoHead = `<link rel="canonical" href="${escAttr(pageUrl)}" />\n        <meta property="og:url" content="${escAttr(pageUrl)}" />`;
+    html = html.replace(/<link\s+rel="canonical"[^>]*>/gi, "").replace(/<meta\s+property="og:url"[^>]*>/gi, "");
+    html = html.replace(/<\/head>/i, `        ${seoHead}\n    </head>`);
+    if (bodyHtml) {
+      html = html.replace(/<main id="app"([^>]*)>\s*<\/main>/i, `<main id="app"$1>${bodyHtml}</main>`);
+    }
     fs.writeFileSync(path.join(dir, "index.html"), html);
   };
 
@@ -150,18 +159,19 @@ function build(opts = {}) {
     writeRoutePage(r, `${r[0].toUpperCase() + r.slice(1)} — piezuke`);
   }
   for (const w of dataMod.WRITEUPS || []) {
-    writeRoutePage(`writeups/${w.slug}`, `${w.title} — piezuke`, w.excerpt, w.image);
+    const seoBody = `<article class="seo-article"><h1>${escAttr(w.title)}</h1><p>${escAttr(w.date || "")}</p><p>${escAttr(w.excerpt || "")}</p></article>`;
+    writeRoutePage(`writeups/${w.slug}`, `${w.title} — piezuke`, w.excerpt, w.image, seoBody);
   }
   for (const p of dataMod.PROJECTS || []) {
-    writeRoutePage(`projects/${p.slug}`, `${p.title} — piezuke`, p.excerpt, p.image);
+    const seoBody = `<article class="seo-article"><h1>${escAttr(p.title)}</h1><p>${escAttr(p.date || "")}</p><p>${escAttr(p.excerpt || "")}</p></article>`;
+    writeRoutePage(`projects/${p.slug}`, `${p.title} — piezuke`, p.excerpt, p.image, seoBody);
   }
 
   /* ---- 3d. generate sitemap.xml & feed.xml ---- */
-  const siteBase = "https://piezuke.github.io";
   const xmlEsc = (str) => String(str || "").replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&apos;", '"': "&quot;" }[c]));
-  const urls = ["/", "/writeups", "/projects", "/notes", "/timeline", "/about"];
-  for (const w of dataMod.WRITEUPS || []) urls.push(`/writeups/${w.slug}`);
-  for (const p of dataMod.PROJECTS || []) urls.push(`/projects/${p.slug}`);
+  const urls = ["/", "/writeups/", "/projects/", "/notes/", "/timeline/", "/about/"];
+  for (const w of dataMod.WRITEUPS || []) urls.push(`/writeups/${w.slug}/`);
+  for (const p of dataMod.PROJECTS || []) urls.push(`/projects/${p.slug}/`);
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
     urls.map((u) => `  <url><loc>${siteBase}${u}</loc></url>`).join("\n") +
