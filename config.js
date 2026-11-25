@@ -95,7 +95,7 @@ const CONFIG = {
       // opens. 700 = 0.7 seconds. 0 = as short as possible.
       minDuration: 700,
       // ...and when you click to another page. 0 = swap instantly (fastest).
-      pageChangeDuration: 0,
+      pageChangeDuration: 450,
       // The loading screen also waits for the web fonts and the pictures that are on
       // screen (on first load and on every page change), so nothing pops in late.
       waitForImages: true,

@@ -6249,29 +6249,6 @@ body::before {
   }
 }
 
-/* === THEME BLUR-CROSSFADE TRANSITION === */
-#theme-veil {
-  position: fixed;
-  inset: 0;
-  z-index: 99999;
-  pointer-events: none;
-  opacity: 0;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  background: color-mix(in srgb, var(--bg, #050505) 18%, transparent);
-  transition: opacity 460ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: opacity;
-}
-#theme-veil.in {
-  opacity: 1;
-  transition: opacity 280ms cubic-bezier(0.4, 0, 1, 1);
-}
-body.theme-switching,
-body.theme-switching * {
-  transition: background-color 360ms ease, color 220ms ease, border-color 220ms ease !important;
-}
-
-
 /* === AVATAR VERTICAL ALIGN NUDGE === */
 .hero-avatar {
   margin-top: clamp(14px, 2.2vh, 28px) !important;
@@ -6280,4 +6257,227 @@ body.theme-switching * {
   .hero-avatar {
     margin-top: 8px !important;
   }
+}
+
+/* === 2-COLUMN POST LAYOUT (LEFT SIDEBAR) === */
+.postlayout {
+  grid-template-columns: 260px minmax(0, 1fr) !important;
+  gap: 44px !important;
+  padding-top: 12px !important;
+}
+.post-sidebar {
+  position: sticky;
+  top: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  padding-right: 12px;
+}
+.post-back-link {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: clamp(13px, 1.4vw, 15px);
+  color: var(--muted);
+  line-height: 1;
+  margin-top: 2px;
+}
+.post-back-link:hover {
+  color: var(--text);
+}
+.post-sidebar .author-card {
+  text-align: center;
+  margin-bottom: 0;
+  padding-bottom: 22px;
+  border-bottom: var(--hair) solid var(--border);
+}
+.post-sidebar .author-card-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  margin: 0 auto 14px;
+  border: 2px solid var(--border-strong);
+  object-fit: cover;
+  display: block;
+}
+.post-sidebar .author-card-name {
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.post-sidebar .author-card-tag {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 0 auto;
+  max-width: 24ch;
+}
+.post-sidebar .outline {
+  position: static !important;
+  top: auto !important;
+  max-height: none !important;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+.post-suggestions {
+  margin-top: 40px;
+  padding-top: 28px;
+  border-top: var(--hair) solid var(--border);
+}
+.post-suggestions .otitle {
+  color: var(--dim);
+  letter-spacing: 0.14em;
+  font-size: 14px;
+  margin-bottom: 14px;
+  font-family: var(--mono);
+  text-transform: uppercase;
+}
+.post-suggestions .sug-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+@media (max-width: 900px) {
+  .postlayout {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+  .post-sidebar {
+    display: contents;
+  }
+  .post-back-link {
+    order: 1;
+  }
+  .post-sidebar .outline {
+    order: 2;
+  }
+  .postlayout > article {
+    order: 3;
+  }
+  .post-sidebar .author-card {
+    order: 4;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 18px;
+    row-gap: 4px;
+    align-items: center;
+    text-align: left;
+    border-bottom: none;
+    border-top: var(--hair) solid var(--border);
+    padding-top: 24px;
+    padding-bottom: 0;
+    margin-top: 8px;
+  }
+  .post-sidebar .author-card picture {
+    grid-row: 1 / 3;
+    grid-column: 1;
+  }
+  .post-sidebar .author-card-avatar {
+    width: 72px;
+    height: 72px;
+    margin: 0;
+  }
+  .post-sidebar .author-card-name {
+    grid-column: 2;
+    align-self: end;
+    font-size: 22px;
+    margin-bottom: 0;
+  }
+  .post-sidebar .author-card-tag {
+    grid-column: 2;
+    align-self: start;
+    margin: 0;
+    max-width: none;
+  }
+}
+
+
+/* === THEME TOGGLE REWORK === */
+.theme-switch {
+  position: relative;
+  width: 38px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--border-strong) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    border-color 0.2s var(--ease),
+    background-color 0.2s var(--ease),
+    transform 0.2s var(--ease) !important;
+}
+.theme-switch:hover {
+  border-color: var(--text) !important;
+  background: var(--surface-2) !important;
+  transform: translateY(-1px);
+}
+.theme-switch:active {
+  transform: scale(0.94);
+}
+.theme-switch .ts-ic {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    opacity 0.28s var(--ease),
+    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+.theme-switch .ts-ic svg {
+  width: 17px;
+  height: 17px;
+}
+:root[data-theme="dark"] .theme-switch .ts-sun,
+:root[data-theme="light"] .theme-switch .ts-moon {
+  opacity: 0;
+  transform: rotate(-75deg) scale(0.45);
+}
+:root[data-theme="light"] .theme-switch .ts-sun,
+:root[data-theme="dark"] .theme-switch .ts-moon {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) { z-index: 9999; }
+
+
+/* === THEME DIAGONAL SHUTTER WIPE === */
+#theme-wipe {
+  position: fixed;
+  inset: -10vh -25vw;
+  z-index: 99999;
+  pointer-events: none;
+  transform: translateX(-115%) skewX(-14deg);
+  will-change: transform;
+  opacity: 0;
+}
+#theme-wipe[data-to="light"] {
+  background: linear-gradient(90deg, transparent 0%, #f6f6f6 18%, #ffffff 50%, #f6f6f6 82%, transparent 100%);
+}
+#theme-wipe[data-to="dark"] {
+  background: linear-gradient(90deg, transparent 0%, #0a0a0a 18%, #050505 50%, #0a0a0a 82%, transparent 100%);
+}
+#theme-wipe.sweep {
+  opacity: 1;
+  animation: theme-shutter 460ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+@keyframes theme-shutter {
+  0%   { transform: translateX(-115%) skewX(-14deg); }
+  100% { transform: translateX(115%) skewX(-14deg); }
 }

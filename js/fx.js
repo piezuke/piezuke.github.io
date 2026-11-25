@@ -376,25 +376,7 @@
     const track = mq && mq.querySelector(".marquee-track");
     if (!track) return;
     mq.classList.add("gsap-on");
-    const tw = G.to(track, { xPercent: -50, duration: 40, ease: "none", repeat: -1 });
-    if (!ST) return;
-    const skew = G.quickTo(track, "skewX", { duration: 0.45, ease: "power3.out" });
-    let calm = null;
-    ST.create({
-      start: 0,
-      end: "max",
-      onUpdate(self) {
-        const v = self.getVelocity();
-        const dir = self.direction || 1;
-        skew(G.utils.clamp(-10, 10, -v / 140));
-        G.to(tw, { timeScale: dir * (1 + Math.min(6, Math.abs(v) / 260)), duration: 0.25, overwrite: true });
-        if (calm) calm.kill();
-        calm = G.delayedCall(0.18, () => {
-          skew(0);
-          G.to(tw, { timeScale: dir, duration: 0.8, overwrite: true });
-        });
-      },
-    });
+    G.to(track, { xPercent: -50, duration: 40, ease: "none", repeat: -1 });
   }
 
   function revealBuild(root) {

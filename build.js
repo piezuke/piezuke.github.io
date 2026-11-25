@@ -126,6 +126,15 @@ function build(opts = {}) {
   /* ---- 3c. generate clean-URL route pages (dist/<route>/index.html) ---- */
   const indexHtml = fs.readFileSync(path.join(out, "index.html"), "utf8");
   const dataMod = require(path.join(ROOT, "data.js"));
+  const cfgSandbox = { window: {}, globalThis: {} };
+  const siteCfg = vm.runInNewContext(
+    fs.readFileSync(path.join(ROOT, "config.js"), "utf8") +
+      "\n;typeof SITE_CONFIG !== \"undefined\" ? SITE_CONFIG : (window.SITE_CONFIG || {});",
+    cfgSandbox
+  ) || {};
+  const siteTitle = (siteCfg.site && siteCfg.site.title) || "piezuke — pieBlog";
+  const siteBrand = (siteCfg.site && siteCfg.site.brand) || "piezuke";
+  const siteDesc = (siteCfg.site && siteCfg.site.description) || "";
   const escAttr = (str) => String(str || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
   const siteBase = "https://piezuke.github.io";
@@ -155,16 +164,17 @@ function build(opts = {}) {
     fs.writeFileSync(path.join(dir, "index.html"), html);
   };
 
+  writeRoutePage("", siteTitle, siteDesc);
   for (const r of ["writeups", "projects", "notes", "timeline", "about"]) {
-    writeRoutePage(r, `${r[0].toUpperCase() + r.slice(1)} — piezuke`);
+    writeRoutePage(r, `${r[0].toUpperCase() + r.slice(1)} — ${siteBrand}`, siteDesc);
   }
   for (const w of dataMod.WRITEUPS || []) {
     const seoBody = `<article class="seo-article"><h1>${escAttr(w.title)}</h1><p>${escAttr(w.date || "")}</p><p>${escAttr(w.excerpt || "")}</p></article>`;
-    writeRoutePage(`writeups/${w.slug}`, `${w.title} — piezuke`, w.excerpt, w.image, seoBody);
+    writeRoutePage(`writeups/${w.slug}`, `${w.title} — ${siteBrand}`, w.excerpt, w.image, seoBody);
   }
   for (const p of dataMod.PROJECTS || []) {
     const seoBody = `<article class="seo-article"><h1>${escAttr(p.title)}</h1><p>${escAttr(p.date || "")}</p><p>${escAttr(p.excerpt || "")}</p></article>`;
-    writeRoutePage(`projects/${p.slug}`, `${p.title} — piezuke`, p.excerpt, p.image, seoBody);
+    writeRoutePage(`projects/${p.slug}`, `${p.title} — ${siteBrand}`, p.excerpt, p.image, seoBody);
   }
 
   /* ---- 3d. generate sitemap.xml & feed.xml ---- */
@@ -183,7 +193,7 @@ function build(opts = {}) {
     ...(dataMod.PROJECTS || []).map((p) => ({ ...p, link: `${siteBase}/projects/${p.slug}` })),
   ];
   const rss = `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel>\n` +
-    `  <title>piezuke</title>\n  <link>${siteBase}</link>\n  <description>CTF writeups, projects, notes</description>\n` +
+    `  <title>${xmlEsc(siteTitle)}</title>\n  <link>${siteBase}</link>\n  <description>${xmlEsc(siteDesc)}</description>\n` +
     feedItems.map((it) =>
       `  <item><title>${xmlEsc(it.title)}</title><link>${xmlEsc(it.link)}</link><guid>${xmlEsc(it.link)}</guid><description>${xmlEsc(it.excerpt || "")}</description></item>`
     ).join("\n") +

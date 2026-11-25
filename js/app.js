@@ -1,29 +1,4 @@
 
-function __liveThemeBlur(apply) {
-  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    apply();
-    return { ready: Promise.resolve() };
-  }
-  let veil = document.getElementById("theme-veil");
-  if (!veil) {
-    veil = document.createElement("div");
-    veil.id = "theme-veil";
-    veil.setAttribute("aria-hidden", "true");
-    document.body.appendChild(veil);
-  }
-  clearTimeout(veil._t1);
-  clearTimeout(veil._t2);
-  document.body.classList.add("theme-switching");
-  veil.classList.add("in");
-  veil._t1 = setTimeout(() => {
-    apply();
-    requestAnimationFrame(() => {
-      veil.classList.remove("in");
-      veil._t2 = setTimeout(() => document.body.classList.remove("theme-switching"), 480);
-    });
-  }, 280);
-  return { ready: Promise.resolve() };
-}
 
 /**
  * ===================================================================
@@ -266,15 +241,11 @@ function mountThemeSwitch() {
   btn.setAttribute("role", "switch");
   btn.setAttribute("type", "button");
   btn.innerHTML =
-    '<span class="ts-bg ts-bg-sun" aria-hidden="true">' +
+    '<span class="ts-ic ts-sun" aria-hidden="true">' +
     THEME_ICON_SUN +
-    '</span><span class="ts-bg ts-bg-moon" aria-hidden="true">' +
+    '</span><span class="ts-ic ts-moon" aria-hidden="true">' +
     THEME_ICON_MOON +
-    '</span><span class="ts-knob" aria-hidden="true"><span class="ts-ic ts-sun">' +
-    THEME_ICON_SUN +
-    '</span><span class="ts-ic ts-moon">' +
-    THEME_ICON_MOON +
-    "</span></span>";
+    "</span>";
 }
 
 function paintTheme(t) {
@@ -350,18 +321,26 @@ function setTheme(t, opts) {
   }
 
   try {
-    const vt = __liveThemeBlur(flip);
-    vt.ready
-      .then(() => {
-        const { x, y } = origin;
-        const r = Math.hypot(
-          Math.max(x, window.innerWidth - x),
-          Math.max(y, window.innerHeight - y),
-        );
-        /* theme crossfade handled by CSS ::view-transition */
-      })
-      .catch(() => {});
-    vt.finished.then(done, done);
+    let wipe = document.getElementById("theme-wipe");
+    if (!wipe) {
+      wipe = document.createElement("div");
+      wipe.id = "theme-wipe";
+      wipe.setAttribute("aria-hidden", "true");
+      document.body.appendChild(wipe);
+    }
+    clearTimeout(wipe._t1);
+    clearTimeout(wipe._t2);
+    wipe.dataset.to = t;
+    wipe.classList.remove("sweep");
+    void wipe.offsetWidth;
+    wipe.classList.add("sweep");
+    wipe._t1 = setTimeout(() => {
+      paintTheme(t);
+    }, 180);
+    wipe._t2 = setTimeout(() => {
+      wipe.classList.remove("sweep");
+      done();
+    }, 460);
   } catch (e) {
     flip();
     done();
@@ -1205,17 +1184,26 @@ function viewPost(arr, slug, page) {
 
   return `
   <div class="wrap" style="padding-top:26px;">
-    <a href="${escapeHTML(hrefFor(page))}" style="font-family:var(--mono); font-size:clamp(13px,1.5vw,16px); color:var(--muted);">${escapeHTML(P.backLabel)}</a>
     <div class="postlayout">
-      ${
-        outline.length > 0
-          ? `
-      <aside class="outline" id="outline">
-        <div class="otitle">${escapeHTML(PO.outlineTitle)}</div>
-        ${outline.map((o) => `<a href="#${escapeHTML(o.id)}" class="${o.depth === 3 ? "h3" : ""}" data-target="${escapeHTML(o.id)}">${escapeHTML(o.text)}</a>`).join("")}
-      </aside>`
-          : "<div></div>"
-      }
+      <aside class="post-sidebar">
+        <a href="${escapeHTML(hrefFor(page))}" class="post-back-link">${escapeHTML(P.backLabel)}</a>
+        <div class="author-card">
+          <picture>
+            <source srcset="${escapeHTML(postAvatarWebp)}" type="image/webp">
+            <img src="${escapeHTML(postAvatarJpg)}" alt="${escapeHTML(authorName)}" loading="lazy" width="64" height="64" class="author-card-avatar">
+          </picture>
+          <div class="author-card-name">${escapeHTML(authorName)}</div>
+          <p class="author-card-tag">${escapeHTML(authorTag)}</p>
+        </div>
+        ${
+          outline.length > 0
+            ? `<div class="outline" id="outline">
+          <div class="otitle">${escapeHTML(PO.outlineTitle)}</div>
+          ${outline.map((o) => `<a href="#${escapeHTML(o.id)}" class="${o.depth === 3 ? "h3" : ""}" data-target="${escapeHTML(o.id)}">${escapeHTML(o.text)}</a>`).join("")}
+        </div>`
+            : ""
+        }
+      </aside>
       <article>
         <div class="article-head">
           ${coverSrc(item) ? `<div class="article-cover" aria-hidden="true">${coverImg(item)}</div>` : ""}
@@ -1235,20 +1223,11 @@ function viewPost(arr, slug, page) {
             ${next ? `<a class="post-pager-link next" href="${escapeHTML(hrefFor(page, next.slug))}"><span class="post-pager-dir">Next →</span><span class="post-pager-title">${escapeHTML(next.title)}</span></a>` : ""}
           </nav>`;
         })()}
-      </article>
-      <aside class="right-panel">
-        <div class="author-card">
-          <picture>
-            <source srcset="${escapeHTML(postAvatarWebp)}" type="image/webp">
-            <img src="${escapeHTML(postAvatarJpg)}" alt="${escapeHTML(authorName)}" loading="lazy" width="90" height="90" style="width:90px; height:90px; border-radius:50%; margin-bottom:14px; border:2px solid var(--border-strong); object-fit:cover;">
-          </picture>
-          <div style="font-size:24px; font-weight:800; margin-bottom:6px;">${escapeHTML(authorName)}</div>
-          <p style="color:var(--muted); font-size:15px; line-height:1.4;">${escapeHTML(authorTag)}</p>
-        </div>
         ${
           suggestions.length
-            ? `<div class="suggestions">
-          <div class="otitle" style="color:var(--dim); letter-spacing:.14em; font-size:16.4px; margin-bottom:14px; font-family:var(--mono); text-transform:uppercase;">${escapeHTML(PO.suggestedTitle)}</div>
+            ? `<div class="suggestions post-suggestions">
+          <div class="otitle">${escapeHTML(PO.suggestedTitle)}</div>
+          <div class="sug-grid">
           ${suggestions
             .map(
               (s) => `
@@ -1259,10 +1238,11 @@ function viewPost(arr, slug, page) {
           `,
             )
             .join("")}
+          </div>
         </div>`
             : ""
         }
-      </aside>
+      </article>
     </div>
   </div>
   `;
@@ -2402,126 +2382,7 @@ if ("serviceWorker" in navigator && document.querySelector('meta[name="app-build
   }
 
   // 2. Card Spotlight (delegated, zero layout thrash)
-  document.addEventListener(
-    "pointermove",
-    (e) => {
-      if (e.pointerType === "touch") return;
-      const card = e.target && e.target.closest ? e.target.closest(".card, .explore, .social-tile") : null;
-      if (!card) return;
-      const r = card.getBoundingClientRect();
-      card.style.setProperty("--mx", (e.clientX - r.left) + "px");
-      card.style.setProperty("--my", (e.clientY - r.top) + "px");
-    },
-    { passive: true },
-  );
-
-  // 3. Keyboard Shortcuts + '?' Modal
-  let gPrefix = false;
-  let gTimer = null;
-
-  function goClean(route) {
-    if (typeof markLinkNav === "function") markLinkNav();
-    if (window.history && window.history.pushState) {
-      history.pushState(null, "", route);
-      if (typeof navigate === "function") navigate();
-    }
-  }
-
-  function toggleShortcutsModal(forceClose) {
-    let ov = document.getElementById("kbd-modal-overlay");
-    if (!ov) {
-      ov = document.createElement("div");
-      ov.id = "kbd-modal-overlay";
-      ov.innerHTML = `<div class="kbd-modal" role="dialog" aria-label="Keyboard shortcuts">
-        <h3>Keyboard Shortcuts</h3>
-        <div class="kbd-row"><span>Command Palette</span><span><kbd>⌘K</kbd> / <kbd>/</kbd></span></div>
-        <div class="kbd-row"><span>Toggle Theme</span><span><kbd>t</kbd></span></div>
-        <div class="kbd-row"><span>Go Home</span><span><kbd>g</kbd> <kbd>h</kbd></span></div>
-        <div class="kbd-row"><span>Writeups</span><span><kbd>g</kbd> <kbd>w</kbd></span></div>
-        <div class="kbd-row"><span>Projects</span><span><kbd>g</kbd> <kbd>p</kbd></span></div>
-        <div class="kbd-row"><span>Notes Vault</span><span><kbd>g</kbd> <kbd>n</kbd></span></div>
-        <div class="kbd-row"><span>Timeline / About</span><span><kbd>g</kbd> <kbd>t</kbd> / <kbd>g</kbd> <kbd>a</kbd></span></div>
-        <div class="kbd-row"><span>Close Modal</span><span><kbd>esc</kbd></span></div>
-      </div>`;
-      ov.addEventListener("click", (e) => { if (e.target === ov) ov.classList.remove("open"); });
-      document.body.appendChild(ov);
-    }
-    if (forceClose) ov.classList.remove("open");
-    else ov.classList.toggle("open");
-  }
-
-  document.addEventListener("keydown", (e) => {
-    const tag = (e.target && e.target.tagName || "").toLowerCase();
-    if (tag === "input" || tag === "textarea" || (e.target && e.target.isContentEditable)) return;
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
-
-    if (e.key === "Escape") {
-      toggleShortcutsModal(true);
-      return;
-    }
-    if (e.key === "?") {
-      e.preventDefault();
-      toggleShortcutsModal();
-      return;
-    }
-    if (gPrefix) {
-      gPrefix = false;
-      clearTimeout(gTimer);
-      const map = { h: "/", w: "/writeups", p: "/projects", n: "/notes", t: "/timeline", a: "/about" };
-      if (map[e.key]) {
-        e.preventDefault();
-        goClean(map[e.key]);
-      }
-      return;
-    }
-    if (e.key === "g") {
-      gPrefix = true;
-      clearTimeout(gTimer);
-      gTimer = setTimeout(() => (gPrefix = false), 900);
-      return;
-    }
-    if (e.key === "t" && typeof setTheme === "function" && typeof currentTheme === "function") {
-      const next = currentTheme() === "dark" ? "light" : "dark";
-      setTheme(next);
-      showToast("theme: " + next);
-    }
-  });
-})();
-
-
-/* ========================= VISUAL UPGRADE: SUBTLE 3D AVATAR TILT ========================= */
-(function initAvatarTilt() {
-  const reduced =
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduced) return;
-
-  document.addEventListener(
-    "pointermove",
-    (e) => {
-      if (e.pointerType === "touch") return;
-      const box = e.target && e.target.closest ? e.target.closest(".hero-avatar") : null;
-      if (!box) return;
-      const img = box.querySelector(".hero-avatar-img");
-      if (!img) return;
-      const r = box.getBoundingClientRect();
-      const dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
-      const dy = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
-      img.style.transform = `rotateX(${(-dy * 7).toFixed(2)}deg) rotateY(${(dx * 7).toFixed(2)}deg) scale(1.02)`;
-    },
-    { passive: true },
-  );
-
-  document.addEventListener(
-    "pointerout",
-    (e) => {
-      const box = e.target && e.target.closest ? e.target.closest(".hero-avatar") : null;
-      if (!box || box.contains(e.relatedTarget)) return;
-      const img = box.querySelector(".hero-avatar-img");
-      if (img) img.style.transform = "";
-    },
-    { passive: true },
-  );
+  // hero avatar hover tilt disabled
 })();
 
 /* ========================= MOBILE TOC & HERO SCRAMBLE ========================= */
@@ -2563,7 +2424,7 @@ if ("serviceWorker" in navigator && document.querySelector('meta[name="app-build
   function syncMobileToc() {
     let btn = document.getElementById("mob-toc-btn");
     let drawer = document.getElementById("mob-toc-drawer");
-    const outlineLinks = Array.from(document.querySelectorAll(".postlayout > .outline a"));
+    const outlineLinks = Array.from(document.querySelectorAll(".postlayout .outline a"));
 
     if (!outlineLinks.length) {
       if (btn) btn.classList.remove("visible");
