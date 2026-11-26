@@ -428,7 +428,7 @@ const CONFIG = {
       captionRoles: ["Binary Exploitation", "CTF player @ teambi0s"],
       eyebrow: "From the author",
       heading: "about myself",
-      bio: "Hello! Myself PIE. I go by pie-zuke, PIE for short. Also its 'zyuk', NOT ZU-KEH.\n Anyway, Im a CS student at Amrita, and a part of teambi0s under the Binary Exploitation category. Buy me coffee if u see me(unlikely cus I hate touching grass). I occationally take on random side projects which may or maynot include building a wholeahh operating system(I wish I had the motivation). Feel free to try out that music player on the on the left or on top if ur on phone, except idk if it will be working by the time I post this. Plus I still haven't finished composing even a single tune at the time of writing this. Bluh",
+      bio: "Hello! Myself PIE. I go by pie-zuke, PIE for short. Also its 'zyuk', NOT ZU-KEH.\n Anyway, Im a CS undergrad at Amrita, and a part of teambi0s under the Binary Exploitation category. Buy me coffee if u see me(unlikely cus I hate touching grass). I occationally take on random side projects which may or maynot include building a wholeahh operating system(I wish I had the motivation). Feel free to try out that music player on the on the left or on top if ur on phone, except idk if it will be working by the time I post this. Plus I still haven't finished composing even a single tune at the time of writing this. Bluh",
       interestsHeading: "Interests",
       skills: [
         "Binary Exploitation",
