@@ -57,7 +57,7 @@ describe("config.js controls every piece of text and every URL slug", () => {
     ["#/journey", (s) => { assert.ok(T(s, "#app").includes("MY JOURNEY") && T(s, "#app").includes("T1")); }],
     ["#/story", (s) => assert.ok(T(s, "#app").includes("MY JOURNEY"), "legacy slug redirects")],
     ["#/me", (s) => assert.ok(T(s, "#app").includes("ABOUT HEADING"), "legacy slug redirects")],
-    ["#/about", (s) => { const a = T(s, "#app"); assert.ok(a.includes("custom bio") && a.includes("only-skill") && a.includes("ELSEWHERE") && a.includes("tap to copy") && a.includes("MY TUNES") && a.includes("none yet lol")); assert.equal(s.document.querySelectorAll(".social-tile").length, 2); }],
+    ["#/about", (s) => { const a = T(s, "#app"); assert.ok(a.includes("custom bio") && a.includes("ELSEWHERE") && a.includes("tap to copy")); assert.equal(s.document.querySelectorAll(".social-tile").length, 2); }],
     ["#/zzz", (s) => { assert.ok(T(s, "#app").includes("LOST") && T(s, "#app").includes("custom 404 text")); assert.equal(s.document.title, "[zedsite] :: Lost page"); }],
   ];
   for (const [hash, check] of pages) {

@@ -2738,6 +2738,7 @@ function hydrateGithubEmbeds() {
       }
     } catch (e) {}
 
+    if (typeof fetch !== "function") return;
     fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`, {
       cache: "no-store",
       headers: { Accept: "application/vnd.github+json" }

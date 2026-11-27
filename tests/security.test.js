@@ -52,7 +52,7 @@ describe("Content-Security-Policy", () => {
     assert.equal(directive(p, "base-uri"), "'self'");
     assert.equal(directive(p, "form-action"), "'self'");
     assert.equal(directive(p, "worker-src"), "'self'");
-    assert.equal(directive(p, "connect-src"), "'self'");
+    assert.equal(directive(p, "connect-src"), "'self' https://api.github.com");
     assert.ok(/upgrade-insecure-requests/.test(p));
   });
 
