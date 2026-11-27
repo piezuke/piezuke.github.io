@@ -134,15 +134,29 @@ function build(opts = {}) {
   ) || {};
   const siteTitle = (siteCfg.site && siteCfg.site.title) || "piezuke — pieBlog";
   const siteBrand = (siteCfg.site && siteCfg.site.brand) || "piezuke";
-  const siteDesc = (siteCfg.site && siteCfg.site.description) || "";
+  const siteDesc = (siteCfg.site && siteCfg.site.description) || "CS projects, CTF writeups, notes, and whatever else I'm tinkering with.";
   const escAttr = (str) => String(str || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
   const siteBase = "https://piezuke.github.io";
-  const writeRoutePage = (routePath, title, desc, image, bodyHtml) => {
+  const { generateOgCard } = require(path.join(ROOT, "og-gen.js"));
+  const avatarPath = path.join(ROOT, "media", "pfp.jpg");
+  const ogDir = path.join(out, "og");
+
+  const makeOg = (fileKey, opts) => {
+    const fname = fileKey.replace(/[^a-z0-9_-]+/gi, "-") + ".png";
+    const ok = generateOgCard(path.join(ogDir, fname), { ...opts, avatarPath });
+    return ok ? `${siteBase}/og/${fname}` : `${siteBase}/media/pfp.jpg`;
+  };
+
+  const writeRoutePage = (routePath, title, desc, image, bodyHtml, ogType = "website") => {
     const clean = routePath.replace(/^\/+|\/+$/g, "");
     const dir = path.join(out, ...clean.split("/").filter(Boolean));
     fs.mkdirSync(dir, { recursive: true });
     const pageUrl = clean ? `${siteBase}/${clean}/` : `${siteBase}/`;
+    const absImage = image && /^https?:\/\//i.test(image)
+      ? image
+      : (image ? `${siteBase}/${image.replace(/^\/+/, "")}` : `${siteBase}/og/home.png`);
+
     let html = indexHtml;
     if (title) {
       html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escAttr(title)}</title>`);
@@ -152,9 +166,10 @@ function build(opts = {}) {
       html = html.replace(/(<meta\s+name="description"\s+content=")[^"]*(")/i, `$1${escAttr(desc)}$2`);
       html = html.replace(/(<meta\s+property="og:description"\s+content=")[^"]*(")/i, `$1${escAttr(desc)}$2`);
     }
-    if (image) {
-      html = html.replace(/(<meta\s+property="og:image"\s+content=")[^"]*(")/i, `$1${escAttr(image)}$2`);
-    }
+    html = html.replace(/(<meta\s+property="og:type"\s+content=")[^"]*(")/i, `$1${escAttr(ogType)}$2`);
+    html = html.replace(/(<meta\s+property="og:image"\s+content=")[^"]*(")/i, `$1${escAttr(absImage)}$2`);
+    html = html.replace(/(<meta\s+name="twitter:image"\s+content=")[^"]*(")/i, `$1${escAttr(absImage)}$2`);
+
     const seoHead = `<link rel="canonical" href="${escAttr(pageUrl)}" />\n        <meta property="og:url" content="${escAttr(pageUrl)}" />`;
     html = html.replace(/<link\s+rel="canonical"[^>]*>/gi, "").replace(/<meta\s+property="og:url"[^>]*>/gi, "");
     html = html.replace(/<\/head>/i, `        ${seoHead}\n    </head>`);
@@ -164,17 +179,109 @@ function build(opts = {}) {
     fs.writeFileSync(path.join(dir, "index.html"), html);
   };
 
-  writeRoutePage("", siteTitle, siteDesc);
+  const wCount = (dataMod.WRITEUPS || []).length;
+  const pCount = (dataMod.PROJECTS || []).length;
+  const nCount = (dataMod.NOTES || []).length;
+  const siteStats = [
+    ["WRITEUPS", String(wCount).padStart(2, "0")],
+    ["PROJECTS", String(pCount).padStart(2, "0")],
+    ["NOTES", String(nCount).padStart(2, "0")],
+    ["THEME", "MONOCHROME"],
+  ];
+
+  const latestW = (dataMod.WRITEUPS || [])[0];
+  const latestP = (dataMod.PROJECTS || [])[0];
+  const homeSublines = [
+    latestW ? `writeup: ${latestW.title}` : null,
+    latestP ? `project: ${latestP.title}` : null,
+    "stack: C / Python / JS / Linux",
+  ].filter(Boolean);
+
+  const homeOg = makeOg("home", {
+    badge: "PIEBLOG",
+    title: siteTitle,
+    desc: siteDesc,
+    sublines: homeSublines,
+    route: "~/",
+    tags: ["ctf", "projects", "pwn", "notes", "dev"],
+    metaRows: siteStats,
+  });
+  writeRoutePage("", siteTitle, siteDesc, homeOg);
+
+  const sectionCopy = {
+    writeups: {
+      desc: "CTF challenge breakdowns, binary exploitation notes, and step-by-step solves.",
+      sublines: (dataMod.WRITEUPS || []).slice(0, 3).map((w) => `[${w.category || "CTF"}] ${w.title}`),
+    },
+    projects: {
+      desc: "Tools, algorithms, and side projects built from scratch.",
+      sublines: (dataMod.PROJECTS || []).slice(0, 3).map((p) => `repo: ${p.title}`),
+    },
+    notes: {
+      desc: "Quick technical references, snippets, and field notes.",
+      sublines: ["topics: pwn / reversing / systems / linux"],
+    },
+    timeline: {
+      desc: "Chronological log of posts, builds, and milestones.",
+      sublines: homeSublines.slice(0, 2),
+    },
+    about: {
+      desc: "Who I am, what I'm tinkering with, and where to find me around the web.",
+      sublines: ["github.com/piezuke", "piezuke.github.io"],
+    },
+  };
+
   for (const r of ["writeups", "projects", "notes", "timeline", "about"]) {
-    writeRoutePage(r, `${r[0].toUpperCase() + r.slice(1)} — ${siteBrand}`, siteDesc);
+    const label = r[0].toUpperCase() + r.slice(1);
+    const sc = sectionCopy[r] || { desc: siteDesc, sublines: [] };
+    const og = makeOg(r, {
+      badge: label,
+      title: `${label} — ${siteBrand}`,
+      desc: sc.desc,
+      sublines: sc.sublines,
+      route: `~/${r}`,
+      tags: [r, "pieblog", "security"],
+      metaRows: siteStats,
+    });
+    writeRoutePage(r, `${label} — ${siteBrand}`, sc.desc, og);
   }
+  const buildPostOgOpts = (item, typeLabel, routePrefix) => {
+    const metaEntries = Object.entries(item.meta || {});
+    const sublines = metaEntries.map(([k, v]) => `${k}: ${v}`);
+    if (item.tag) sublines.push(`tags: ${item.tag}`);
+
+    const pills = Array.isArray(item.pills) && item.pills.length
+      ? item.pills
+      : String(item.tag || "").split("·").map((s) => s.trim()).filter(Boolean);
+
+    const metaRows = [
+      ["TYPE", typeLabel],
+      ...metaEntries.slice(0, 3).map(([k, v]) => [k.toUpperCase(), String(v)]),
+      ["DATE", item.date || "2026"],
+    ].slice(0, 5);
+
+    const badge = (item.meta && (item.meta.Category || item.meta.CTF)) || typeLabel;
+    return {
+      badge,
+      title: item.title,
+      desc: item.excerpt || "",
+      sublines,
+      date: item.date,
+      route: `~/${routePrefix}/${item.slug}`,
+      tags: pills.length ? pills : [typeLabel.toLowerCase()],
+      metaRows,
+    };
+  };
+
   for (const w of dataMod.WRITEUPS || []) {
     const seoBody = `<article class="seo-article"><h1>${escAttr(w.title)}</h1><p>${escAttr(w.date || "")}</p><p>${escAttr(w.excerpt || "")}</p></article>`;
-    writeRoutePage(`writeups/${w.slug}`, `${w.title} — ${siteBrand}`, w.excerpt, w.image, seoBody);
+    const og = makeOg(`writeups-${w.slug}`, buildPostOgOpts(w, "WRITEUP", "writeups"));
+    writeRoutePage(`writeups/${w.slug}`, `${w.title} — ${siteBrand}`, w.excerpt, og, seoBody, "article");
   }
   for (const p of dataMod.PROJECTS || []) {
     const seoBody = `<article class="seo-article"><h1>${escAttr(p.title)}</h1><p>${escAttr(p.date || "")}</p><p>${escAttr(p.excerpt || "")}</p></article>`;
-    writeRoutePage(`projects/${p.slug}`, `${p.title} — ${siteBrand}`, p.excerpt, p.image, seoBody);
+    const og = makeOg(`projects-${p.slug}`, buildPostOgOpts(p, "PROJECT", "projects"));
+    writeRoutePage(`projects/${p.slug}`, `${p.title} — ${siteBrand}`, p.excerpt, og, seoBody, "article");
   }
 
   /* ---- 3d. generate sitemap.xml & feed.xml ---- */

@@ -1377,8 +1377,6 @@ function viewAbout() {
           ${bioParas.map((p) => `<p>${escapeHTML(p)}</p>`).join("")}
         </div>
         <div class="about-hero-actions reveal">
-          <a href="#about-interests" class="btn-pill">Interests →</a>
-          <a href="#about-music" class="btn-pill">Music →</a>
           <a href="#about-socials" class="btn-pill primary">Find me around</a>
         </div>
       </div>
@@ -1413,139 +1411,8 @@ function viewAbout() {
     </div>
 
     <div class="about-lower-grid">
-      <section class="about-lower-sec about-sweep-sec reveal" id="about-interests">
-        <div class="about-sec-head">
-          <span>${escapeHTML(A.interestsHeading)}</span>
-          <span class="mono-dim">${String(skills.length).padStart(2, "0")} // HOVER OR SELECT</span>
-        </div>
-        ${(() => {
-          const SPRITES = {
-            pwn: '<svg viewBox="0 0 12 12" shape-rendering="crispEdges"><path fill="currentColor" d="M3 1h6v1h1v1h1v4h-1v1H9v2H8V9H7v1H5V9H4v1H3V8H2V7H1V3h1V2h1V1zm1 3v2h2V4H4zm3 0v2h2V4H7z"/></svg>',
-            rev: '<svg viewBox="0 0 12 12" shape-rendering="crispEdges"><path fill="currentColor" d="M4 1h4v1h1v1h1v4H9v1H8v1H4V8H3V7H2V3h1V2h1V1zm1 2v1H4v2h1v1h2V6h1V4H7V3H5zm4 5h1v1h1v2H9v-1H8V9h1V8z"/></svg>',
-            os: '<svg viewBox="0 0 12 12" shape-rendering="crispEdges"><path fill="currentColor" d="M1 1h8l2 2v8H1V1zm2 1v3h5V2H3zm3 1h1v2H6V3zM3 7v3h6V7H3z"/></svg>',
-            game: '<svg viewBox="0 0 12 12" shape-rendering="crispEdges"><path fill="currentColor" d="M2 3h8v1h1v5h-1v1H8V9H4v1H2V9H1V4h1V3zm1 2v1H2v1h1v1h1V7h1V6H4V5H3zm5 0v1h1V5H8zm1 2v1h1V7H9z"/></svg>',
-            music: '<svg viewBox="0 0 12 12" shape-rendering="crispEdges"><path fill="currentColor" d="M4 1h7v2H5v6H4v1H2V9H1V7h1V6h2V1zm5 2h2v5h-1v1H8V8H7V6h1V5h1V3z"/></svg>',
-            larp: '<svg viewBox="0 0 12 12" shape-rendering="crispEdges"><path fill="currentColor" d="M9 1h2v2h-1v1H9v1H8v1H7v1H6v1h1v1H6v1H5V9H4v1H3v1H1V9h1V8h1V7H2V6h1V5h1v1h1V5h1V4h1V3h1V2h1V1z"/></svg>',
-            ghost: '<svg viewBox="0 0 12 12" shape-rendering="crispEdges"><path fill="currentColor" d="M3 1h6v1h1v1h1v8h-1v-1H9v1H7v-1H5v1H3v-1H2v1H1V3h1V2h1V1zm1 3v2h1V4H4zm3 0v2h1V4H7z"/></svg>',
-          };
-
-          const writeups = typeof WRITEUPS !== "undefined" ? WRITEUPS : (typeof POSTS !== "undefined" ? POSTS : []);
-          const projects = typeof PROJECTS !== "undefined" ? PROJECTS : [];
-          const notes = typeof getAllNotes === "function" ? getAllNotes() : [];
-
-          const SYNONYMS = {
-            binary: ["pwn", "exploit", "overflow", "rop", "heap", "stack", "elf"],
-            exploitation: ["pwn", "exploit", "ctf"],
-            reversing: ["rev", "reverse", "ghidra", "ida", "asm"],
-            os: ["kernel", "bootloader", "osdev", "x86"],
-            game: ["gamedev", "engine", "opengl", "sdl", "raylib", "godot"],
-            music: ["audio", "synth", "track", "compose"],
-          };
-
-          function pickMeta(text) {
-            const s = String(text || "").toLowerCase();
-            if (/bin|pwn|exploit/.test(s)) return { key: "pwn", tag: "MEMORY CORRUPTION", note: "Smashing stacks, abusing heaps, and popping shells for teambi0s." };
-            if (/rev|asm|ghidra/.test(s)) return { key: "rev", tag: "DISASSEMBLY", note: "Staring at decompiled spaghetti until the flag falls out." };
-            if (/\bos\b|kernel|sys/.test(s)) return { key: "os", tag: "BARE METAL", note: "Perpetually one burst of motivation away from a custom kernel." };
-            if (/game|godot|unity/.test(s)) return { key: "game", tag: "INTERACTIVE", note: "Tinkering with loops, shaders, and half-finished prototypes." };
-            if (/music|comp|audio|synth/.test(s)) return { key: "music", tag: "SYNTHESIS", note: "Composing tracks that may or may not ever leave the DAW." };
-            if (/larp|rpg|sword/.test(s)) return { key: "larp", tag: "SIDE QUEST", note: "Certified professional larper." };
-            return { key: "ghost", tag: "MISC", note: "Whatever random rabbit hole wins my attention at 2 AM." };
-          }
-
-          function findMatches(raw) {
-            const obj = typeof raw === "string" ? { name: raw } : (raw || {});
-            const words = String(obj.query || obj.name || "")
-              .toLowerCase()
-              .replace(/\([^)]*\)/g, " ")
-              .split(/[^a-z0-9]+/)
-              .filter((w) => w.length >= 2 && !["dev", "etc", "the", "and", "still", "starting", "out"].includes(w));
-            const terms = new Set(words);
-            words.forEach((w) => (SYNONYMS[w] || []).forEach((s) => terms.add(s)));
-            if (!terms.size) return [];
-            const out = [];
-            const scan = (list, type, pageKey) => {
-              for (const item of list) {
-                if (!item) continue;
-                const hay = [item.title, item.tag, item.tags, item.summary, item.slug, item.folder]
-                  .flat().filter(Boolean).join(" ").toLowerCase();
-                for (const t of terms) {
-                  if (hay.includes(t)) {
-                    const href = pageKey === "notes"
-                      ? (typeof hrefFor === "function" ? hrefFor("notes", item.id || item.slug) : "#/notes")
-                      : (typeof hrefFor === "function" ? hrefFor(pageKey, item.slug) : "#/" + pageKey);
-                    out.push({ type, title: item.title || item.name || item.slug, href });
-                    break;
-                  }
-                }
-              }
-            };
-            scan(writeups, "Writeup", "writeups");
-            scan(projects, "Project", "projects");
-            scan(notes, "Note", "notes");
-            return out.slice(0, 3);
-          }
-
-          const items = skills.map((raw, i) => {
-            const obj = typeof raw === "string" ? { name: raw } : (raw || {});
-            const label = String(obj.name || "");
-            const meta = pickMeta(label);
-            return {
-              idx: String(i + 1).padStart(2, "0"),
-              label,
-              tag: obj.tag || meta.tag,
-              note: obj.note || meta.note,
-              sprite: SPRITES[meta.key] || SPRITES.ghost,
-              matches: findMatches(raw),
-            };
-          });
-
-          const first = items[0] || { idx: "01", label: "", tag: "MISC", note: "", sprite: SPRITES.ghost, matches: [] };
-          const renderLinks = (m) => m.length
-            ? m.map((x) => `<a class="stage-link" href="${escapeHTML(x.href)}"><span>${escapeHTML(x.type)}</span><b>${escapeHTML(x.title)}</b><i>↗</i></a>`).join("")
-            : `<div class="stage-empty">NO LINKED POSTS YET // COOKING</div>`;
-
-          return `<div class="sweep-stage-wrap">
-            <ol class="sweep-list" id="about-sweep-list">
-              ${items.map((it, i) => `<li class="sweep-item">
-                <button type="button"
-                  class="sweep-row ${i === 0 ? "is-active" : ""}"
-                  data-idx="${it.idx}"
-                  data-label="${escapeHTML(it.label)}"
-                  data-tag="${escapeHTML(it.tag)}"
-                  data-note="${escapeHTML(it.note)}"
-                  data-links="${escapeHTML(JSON.stringify(it.matches))}">
-                  <span class="sweep-idx">${it.idx}</span>
-                  <span class="sweep-val">${escapeHTML(it.label)}</span>
-                  <span class="sweep-mini" aria-hidden="true">${it.sprite}</span>
-                </button>
-              </li>`).join("")}
-            </ol>
-
-            <aside class="sweep-stage" id="about-sweep-stage" aria-live="polite">
-              <div class="stage-top">
-                <span class="stage-idx" id="stage-idx">[${first.idx}]</span>
-                <span class="stage-tag" id="stage-tag">${escapeHTML(first.tag)}</span>
-              </div>
-              <div class="stage-visual">
-                <div class="stage-grid-bg" aria-hidden="true"></div>
-                <div class="stage-sprite" id="stage-sprite" aria-hidden="true">${first.sprite}</div>
-              </div>
-              <div class="stage-body">
-                <div class="stage-title" id="stage-title">${escapeHTML(first.label)}</div>
-                <p class="stage-note" id="stage-note">${escapeHTML(first.note)}</p>
-                <div class="stage-links" id="stage-links">${renderLinks(first.matches)}</div>
-              </div>
-            </aside>
-          </div>`;
-        })()}
-      </section>
 
       <div class="about-lower-right">
-        <section class="about-lower-sec reveal" id="about-music">
-          <div class="about-sec-head"><span>NOW PLAYING</span></div>
-          <div class="about-music-bare">${music}</div>
-        </section>
 
         <section class="about-lower-sec reveal" id="about-socials">
           <div class="about-sec-head"><span>${escapeHTML(A.socialsHeading)}</span></div>
