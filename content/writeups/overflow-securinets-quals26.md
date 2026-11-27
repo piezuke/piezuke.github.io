@@ -23,7 +23,7 @@ image: media/uploads/1269318.png
 
 ---
 
-## 1. Challenge Overview
+## Challenge Overview
 
 The program starts by asking for our “wise words” and a character count for it. The interesting part is that the count is read as a signed integer, but is later passed to `memcpy()` as its length. This creates an integer-sign conversion issue: a negative count can become an extremely large unsigned copy length.
 
@@ -31,7 +31,7 @@ So we can use this to corrupt control-flow data and redirect execution to the ch
 
 ---
 
-## 2. Initial Recon
+## Initial Recon
 
 The executable is a 64-bit x86-64 ELF binaries with PIE ON. The disassembly exposes useful functions, including `input()`, `prompt()`, `escape()`, and `win()`.
 
@@ -39,7 +39,7 @@ The executable is a 64-bit x86-64 ELF binaries with PIE ON. The disassembly expo
 
 ---
 
-## 3. Reversing The Execution Flow
+## Reversing The Execution Flow
 
 The program's execution flow is:
 
@@ -69,7 +69,7 @@ memcpy(buf_in_main, local_buf, (long)wise_words_len);
 
 ---
 
-## 4. The Vulnerable Logic
+## The Vulnerable Logic
 
 In `input()`, the length validation checks only the upper bound:
 
@@ -90,7 +90,7 @@ For example, on x86-64:
 
 ---
 
-## 5. Exploit Strategy
+## Exploit Strategy
 
 > *(optional rambling) The escape function which cancels out all format specifiers and the printf with a format string vulnerability in the main function are decoys as far I know, But hey, you never know with challenges like these. Do enlighten me if you find a way to use that in some way too*
 
@@ -106,7 +106,7 @@ Our wise words would so be ==> `120 bytes padding + '\x1d\x92'`
 
 ---
 
-## 6. Exploit Script
+## Exploit Script
 
 ```python
 #!/usr/bin/env python3

@@ -6946,3 +6946,284 @@ body::before {
     animation: none;
   }
 }
+
+/* === PROJECT GITHUB EMBED === */
+/* Indented bullet ON THIS PAGE outline (all posts/projects) */
+.outline {
+  overflow: visible !important;
+  padding-left: 0 !important;
+}
+.outline .otitle {
+  font-size: 14.5px !important;
+  letter-spacing: 0.14em;
+  margin-bottom: 12px !important;
+}
+.post-sidebar,
+.outline {
+  overflow: visible !important;
+}
+.outline a.outline-node {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 4px 7px 0 !important;
+  margin-left: 0 !important;
+  border-left: none !important;
+  font-family: var(--mono);
+  font-size: 18px !important;
+  line-height: 1.4;
+  color: var(--muted);
+  text-decoration: none;
+  overflow: visible !important;
+  transition: color 0.16s var(--ease), transform 0.16s var(--ease);
+}
+.outline a.outline-node.h3 {
+  padding-left: 22px !important;
+  font-size: 16.5px !important;
+}
+.outline-bullet {
+  color: var(--dim);
+  font-size: 1.1em;
+  line-height: 1;
+  flex-shrink: 0;
+  user-select: none;
+  transition: color 0.16s var(--ease);
+}
+.outline-label {
+  white-space: nowrap;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+.outline a.outline-node:hover,
+.outline a.outline-node.active,
+.outline a.outline-node.on {
+  color: var(--text) !important;
+  transform: translateX(4px);
+}
+.outline a.outline-node:hover .outline-bullet,
+.outline a.outline-node.active .outline-bullet,
+.outline a.outline-node.on .outline-bullet {
+  color: var(--text);
+}
+
+/* Split monochrome GitHub embed (compact box, big interior text & icons) */
+.postlayout {
+  align-items: start !important;
+}
+.postlayout > article,
+.postlayout article:has(.gh-embed-wrap) {
+  height: auto !important;
+  min-height: 0 !important;
+  padding-bottom: 20px !important;
+  margin-bottom: 0 !important;
+}
+.gh-embed-wrap {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+.gh-embed-wrap {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 24px 0 0;
+  padding-top: 18px;
+  border-top: var(--hair) solid var(--border);
+}
+.gh-embed-heading {
+  margin: 0 0 14px !important;
+  font-family: var(--mono);
+  font-size: clamp(22px, 2.6vw, 30px) !important;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+  line-height: 1.15;
+}
+.gh-embed-card {
+  width: 100%;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 156px;
+  border-radius: 14px;
+  border: 1px solid var(--border-strong);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  text-decoration: none;
+  color: var(--text);
+  overflow: hidden;
+  transition:
+    transform 0.2s var(--ease),
+    border-color 0.2s var(--ease),
+    background-color 0.2s var(--ease);
+}
+.gh-embed-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--text);
+  background: var(--surface);
+}
+.gh-embed-main {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.gh-embed-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.gh-embed-icon {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  color: var(--text);
+}
+.gh-embed-titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-family: var(--mono);
+  line-height: 1.1;
+}
+.gh-embed-owner {
+  font-size: 14px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
+.gh-embed-name {
+  font-size: clamp(24px, 3vw, 32px);
+  color: var(--text);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  word-break: break-word;
+}
+.gh-embed-desc {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.gh-embed-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  padding-top: 10px;
+  border-top: var(--hair) solid var(--border);
+  font-family: var(--mono);
+  font-size: 18px;
+  color: var(--dim);
+}
+.gh-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.gh-stat b {
+  color: var(--text);
+  font-weight: 700;
+}
+.gh-stat-ico {
+  width: 21px;
+  height: 21px;
+  flex-shrink: 0;
+  color: var(--text);
+}
+.gh-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text);
+  display: inline-block;
+}
+.gh-embed-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px;
+  border-left: var(--hair) solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
+}
+.gh-embed-arrow {
+  font-size: 34px;
+  line-height: 1;
+  transition: transform 0.2s var(--ease);
+}
+.gh-embed-cta {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.gh-embed-card:hover .gh-embed-side {
+  background: var(--text);
+  color: var(--bg);
+}
+.gh-embed-card:hover .gh-embed-arrow {
+  transform: translate(3px, -3px);
+}
+@media (max-width: 680px) {
+  .gh-embed-card {
+    grid-template-columns: 1fr;
+  }
+  .gh-embed-side {
+    flex-direction: row;
+    border-left: none;
+    border-top: var(--hair) solid var(--border-strong);
+    padding: 12px 18px;
+  }
+  .gh-embed-arrow {
+    font-size: 22px;
+  }
+}
+
+
+/* === OUTLINE SCROLL MARGIN === */
+.article-body h2,
+.article-body h3 {
+  scroll-margin-top: 96px;
+}
+
+
+/* Main post heading in ON THIS PAGE outline */
+#post-title {
+  scroll-margin-top: 96px;
+}
+.outline a.outline-node.h1 {
+  font-weight: 700;
+  color: var(--text);
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+.outline a.outline-node.h1:hover,
+.outline a.outline-node.h1.active,
+.outline a.outline-node.h1.on {
+  opacity: 1;
+}
+
+
+/* Pixel sprites for ON THIS PAGE outline */
+.outline-bullet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.px-sprite {
+  display: block;
+  image-rendering: pixelated;
+  transition: transform 0.16s var(--ease), color 0.16s var(--ease);
+}
+.outline a.outline-node:hover .px-sprite,
+.outline a.outline-node.active .px-sprite,
+.outline a.outline-node.on .px-sprite {
+  transform: scale(1.18);
+}
+
+#github-repo { scroll-margin-top: 96px; }

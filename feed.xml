@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>piezuke</title>
+    <link>https://piezuke.github.io/</link>
+    <description>Welcome to my sacred archives</description>
+    <language>en</language>
+    <lastBuildDate>Fri, 27 Nov 2026 11:16:10 GMT</lastBuildDate>
+    <atom:link href="https://piezuke.github.io/feed.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Maze-gensol</title>
+      <link>https://piezuke.github.io/projects-maze-gensol.html</link>
+      <guid isPermaLink="true">https://piezuke.github.io/projects-maze-gensol.html</guid>
+      <pubDate>Sun, 01 Nov 2026 00:00:00 GMT</pubDate>
+      <category>Algorithms · C · DFS</category>
+      <description>A C based random square maze genarator and solver that uses DFS for traversal and generation</description>
+    </item>
+    <item>
+      <title>Over?flow Securinets-Quals26</title>
+      <link>https://piezuke.github.io/writeups-overflow-securinets-quals26.html</link>
+      <guid isPermaLink="true">https://piezuke.github.io/writeups-overflow-securinets-quals26.html</guid>
+      <pubDate>Thu, 01 Oct 2026 00:00:00 GMT</pubDate>
+      <category>PWN · low-level · Signed Integer · memcpy · PIE</category>
+      <description>Stack corruction due to calling memcpy() with a very big size argument</description>
+    </item>
+  </channel>
+</rss>

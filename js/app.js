@@ -810,7 +810,7 @@ function showLoader(cb, minOverride) {
     cb(); // the new page is rendered behind the loader...
     // ...which goes away after the minimum time AND once its fonts / pictures are in
     Promise.all([
-      whenAssetsReady(document.getElementById("app"), loaderMaxMs()),
+      whenAssetsReady(document.getElementById("app"), loaderMaxMs(), true),
       new Promise((r) => setTimeout(r, Math.max(0, hideAt - swapAt))),
     ]).then(() => {
       if (token === loaderToken) loaderHide();
@@ -1199,7 +1199,12 @@ function viewPost(arr, slug, page) {
           outline.length > 0
             ? `<div class="outline" id="outline">
           <div class="otitle">${escapeHTML(PO.outlineTitle)}</div>
-          ${outline.map((o) => `<a href="#${escapeHTML(o.id)}" class="${o.depth === 3 ? "h3" : ""}" data-target="${escapeHTML(o.id)}">${escapeHTML(o.text)}</a>`).join("")}
+          <a href="#post-title" class="outline-node h1" data-target="post-title"><span class="outline-bullet" aria-hidden="true"><svg class="px-sprite px-h1" viewBox="0 0 8 8" width="12" height="12" shape-rendering="crispEdges" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="2" height="6"/><rect x="3" y="2" width="2" height="4"/><rect x="5" y="3" width="2" height="2"/></svg></span><span class="outline-label">${escapeHTML(item.title)}</span></a>
+          ${(outline || []).map((o) => {
+            const isH3 = o.depth === 3;
+            return `<a href="#${escapeHTML(o.id)}" class="outline-node ${isH3 ? "h3" : "h2"}" data-target="${escapeHTML(o.id)}"><span class="outline-bullet" aria-hidden="true">${isH3 ? `<svg class="px-sprite px-h3" viewBox="0 0 8 8" width="10" height="10" shape-rendering="crispEdges" fill="currentColor" aria-hidden="true"><rect x="2" y="2" width="4" height="1"/><rect x="2" y="5" width="4" height="1"/><rect x="2" y="3" width="1" height="2"/><rect x="5" y="3" width="1" height="2"/></svg>` : `<svg class="px-sprite px-h2" viewBox="0 0 8 8" width="11" height="11" shape-rendering="crispEdges" fill="currentColor" aria-hidden="true"><rect x="3" y="1" width="2" height="6"/><rect x="2" y="2" width="4" height="4"/><rect x="1" y="3" width="6" height="2"/></svg>`}</span><span class="outline-label">${escapeHTML(o.text)}</span></a>`;
+          }).join("")}
+          ${page === "projects" && parseGithubRepo(item.github !== undefined ? item.github : (item.repo !== undefined ? item.repo : item.repository), item.slug) ? `<a href="#github-repo" class="outline-node h2" data-target="github-repo"><span class="outline-bullet" aria-hidden="true"><svg class="px-sprite px-h2" viewBox="0 0 8 8" width="11" height="11" shape-rendering="crispEdges" fill="currentColor" aria-hidden="true"><rect x="3" y="1" width="2" height="6"/><rect x="2" y="2" width="4" height="4"/><rect x="1" y="3" width="6" height="2"/></svg></span><span class="outline-label">GitHub Repository</span></a>` : ""}
         </div>`
             : ""
         }
@@ -1208,7 +1213,7 @@ function viewPost(arr, slug, page) {
         <div class="article-head">
           ${coverSrc(item) ? `<div class="article-cover" aria-hidden="true">${coverImg(item)}</div>` : ""}
           <div class="eyebrow">${escapeHTML(item.tag)}</div>
-          <h1>${escapeHTML(item.title)}</h1>
+          <h1 id="post-title">${escapeHTML(item.title)}</h1>
           <div class="metarow"><span>${escapeHTML(item.date)}</span><span>${escapeHTML(fmt(PO.readTime || "{n} min read", { n: readTime }))}</span><button type="button" class="share-btn" id="sharebtn" title="${escapeHTML(cfg("pages.post.copyLink.title", ""))}">${escapeHTML(cfg("pages.post.copyLink.label", "copy link"))}</button></div>
           ${postMetaHTML(item)}
         </div>
@@ -1242,6 +1247,7 @@ function viewPost(arr, slug, page) {
         </div>`
             : ""
         }
+      ${projectGithubEmbedHTML(item, page)}
       </article>
     </div>
   </div>
@@ -1966,7 +1972,7 @@ function setupProgress(articleId) {
   if (!article) return;
 
   const headings = Array.from(article.querySelectorAll("h2[id], h3[id]"));
-  const outlineLinks = Array.from(document.querySelectorAll(".outline a"));
+  const outlineLinks = Array.from(document.querySelectorAll(".outline:not(#outline) a"));
 
   function updateProgress() {
     const rect = article.getBoundingClientRect();
@@ -2058,16 +2064,79 @@ function setupTagFilters() {
 }
 
 function setupOutlineListeners() {
-  document.querySelectorAll(".outline a").forEach((a) => {
-    a.onclick = (e) => {
-      e.preventDefault();
-      const targetId = a.dataset.target;
-      if (targetId && /^[a-zA-Z0-9_-]+$/.test(targetId)) {
-        const target = document.getElementById(targetId);
-        if (target) target.scrollIntoView({ behavior: "smooth" });
+  const outline = document.getElementById("outline");
+  if (window._outlineScrollHandler) {
+    window.removeEventListener("scroll", window._outlineScrollHandler);
+    window._outlineScrollHandler = null;
+  }
+  if (!outline) return;
+
+  const links = Array.from(outline.querySelectorAll("a[data-target]"));
+  if (!links.length) return;
+
+  const getNavOffset = () => {
+    const nav = document.querySelector("header, nav.top, .navbar, .topbar");
+    if (nav) {
+      const r = nav.getBoundingClientRect();
+      if (r.height > 0 && r.bottom > 0 && r.bottom < 200) {
+        return Math.ceil(r.bottom) + 18;
       }
-    };
+    }
+    return 96;
+  };
+
+  const setActive = (id) => {
+    links.forEach((a) => {
+      const on = a.dataset.target === id;
+      a.classList.toggle("active", on);
+      a.classList.toggle("on", on);
+    });
+  };
+
+  let clickLockUntil = 0;
+  const unlock = () => { clickLockUntil = 0; };
+  if ("onscrollend" in window) {
+    window.addEventListener("scrollend", unlock, { passive: true });
+  }
+
+  links.forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      const id = a.dataset.target;
+      const target = document.getElementById(id);
+      if (!target) return;
+      clickLockUntil = Date.now() + 900;
+      setActive(id);
+      const offset = getNavOffset();
+      const top = target.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    });
   });
+
+  const targets = links
+    .map((a) => ({ id: a.dataset.target, el: document.getElementById(a.dataset.target) }))
+    .filter((t) => t.el);
+
+  const onScroll = () => {
+    if (!targets.length || Date.now() < clickLockUntil) return;
+    const cutoff = getNavOffset() + 32;
+    let current = targets[0].id;
+    for (const t of targets) {
+      if (t.el.getBoundingClientRect().top <= cutoff) {
+        current = t.id;
+      } else {
+        break;
+      }
+    }
+    if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) {
+      current = targets[targets.length - 1].id;
+    }
+    setActive(current);
+  };
+
+  window._outlineScrollHandler = onScroll;
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
 }
 
 let glitchInterval = null;
@@ -2692,3 +2761,126 @@ if ("serviceWorker" in navigator && document.querySelector('meta[name="app-build
     if (row) activateRow(row);
   });
 })();
+
+/* === PROJECT GITHUB EMBED === */
+function parseGithubRepo(raw, fallbackSlug) {
+  if (raw === false || String(raw || "").toLowerCase() === "none") return null;
+  let val = String(raw || "").trim();
+  if (!val) {
+    const contacts = cfg("pages.about.contacts", []);
+    const gh = Array.isArray(contacts) ? contacts.find((c) => c && c.icon === "github") : null;
+    const ownerMatch = gh && gh.url && String(gh.url).match(/github\.com\/([^\/]+)/i);
+    const owner = (ownerMatch && ownerMatch[1]) || "piezuke";
+    if (!fallbackSlug) return null;
+    return { owner, repo: fallbackSlug, url: `https://github.com/${owner}/${fallbackSlug}` };
+  }
+  const m = val.match(/github\.com\/([^\/\s]+)\/([^\/\s#?]+)/i);
+  if (m) {
+    const owner = m[1];
+    const repo = m[2].replace(/\.git$/i, "");
+    return { owner, repo, url: `https://github.com/${owner}/${repo}` };
+  }
+  if (/^[^\/\s]+\/[^\/\s]+$/.test(val)) {
+    const [owner, repo] = val.split("/");
+    return { owner, repo, url: `https://github.com/${owner}/${repo}` };
+  }
+  return null;
+}
+
+function projectGithubEmbedHTML(item, page) {
+  if (page !== "projects" || !item) return "";
+  const raw = item.github !== undefined ? item.github : (item.repo !== undefined ? item.repo : item.repository);
+  const info = parseGithubRepo(raw, item.slug);
+  if (!info) return "";
+
+  const fallbackDesc = item.excerpt || item.summary || "Source code, build instructions, and full documentation live on GitHub.";
+  const fallbackLang = item.Languages || item.language || (Array.isArray(item.pills) && item.pills[0]) || "";
+
+  setTimeout(() => hydrateGithubEmbeds(), 0);
+
+  return `
+  <section class="gh-embed-wrap reveal" data-gh-owner="${escapeHTML(info.owner)}" data-gh-repo="${escapeHTML(info.repo)}">
+    <h2 id="github-repo" class="gh-embed-heading">GitHub Repository</h2>
+    <a class="gh-embed-card" href="${escapeHTML(info.url)}" target="_blank" rel="noopener noreferrer">
+      <div class="gh-embed-main">
+        <div class="gh-embed-head">
+          <svg class="gh-embed-icon" viewBox="0 0 24 24" width="46" height="46" fill="currentColor" aria-hidden="true">
+            <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.8 0c2.21-1.49 3.18-1.18 3.18-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.68.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/>
+          </svg>
+          <div class="gh-embed-titles">
+            <span class="gh-embed-owner">${escapeHTML(info.owner)} /</span>
+            <strong class="gh-embed-name">${escapeHTML(info.repo)}</strong>
+          </div>
+        </div>
+        <p class="gh-embed-desc" data-gh-desc>${escapeHTML(fallbackDesc)}</p>
+        <div class="gh-embed-stats">
+          <span class="gh-stat" data-gh-lang ${fallbackLang ? "" : "hidden"}><i class="gh-dot"></i><b>${escapeHTML(fallbackLang)}</b></span>
+          <span class="gh-stat" data-gh-stars hidden><svg class="gh-stat-ico" viewBox="0 0 16 16" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg><b>0</b></span>
+          <span class="gh-stat" data-gh-forks hidden><svg class="gh-stat-ico" viewBox="0 0 16 16" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 1 1.5 0v.878a2.25 2.25 0 0 1-2.25 2.25h-1.5v2.128a2.251 2.251 0 1 1-1.5 0V8.5h-1.5A2.25 2.25 0 0 1 3.5 6.25v-.878a2.25 2.25 0 1 1 1.5 0ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm6.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm-3 8.75a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"/></svg><b>0</b></span>
+        </div>
+      </div>
+      <div class="gh-embed-side">
+        <span class="gh-embed-arrow" aria-hidden="true">↗</span>
+        <span class="gh-embed-cta">OPEN REPO</span>
+      </div>
+    </a>
+  </section>
+  `;
+}
+
+function hydrateGithubEmbeds() {
+  document.querySelectorAll(".gh-embed-wrap[data-gh-owner]").forEach((wrap) => {
+    if (wrap.dataset.ghLoaded) return;
+    wrap.dataset.ghLoaded = "1";
+    const owner = wrap.dataset.ghOwner;
+    const repo = wrap.dataset.ghRepo;
+    const key = `gh_repo_v2_${owner}_${repo}`;
+
+    const apply = (data) => {
+      if (!data || data.message === "Not Found") return;
+      const descEl = wrap.querySelector("[data-gh-desc]");
+      const langEl = wrap.querySelector("[data-gh-lang]");
+      const starsEl = wrap.querySelector("[data-gh-stars]");
+      const forksEl = wrap.querySelector("[data-gh-forks]");
+      if (descEl && data.description) descEl.textContent = data.description;
+      if (langEl && data.language) {
+        langEl.hidden = false;
+        const b = langEl.querySelector("b");
+        if (b) b.textContent = data.language;
+      }
+      if (starsEl && typeof data.stargazers_count === "number") {
+        starsEl.hidden = false;
+        const b = starsEl.querySelector("b");
+        if (b) b.textContent = String(data.stargazers_count);
+      }
+      if (forksEl && typeof data.forks_count === "number") {
+        forksEl.hidden = false;
+        const b = forksEl.querySelector("b");
+        if (b) b.textContent = String(data.forks_count);
+      }
+    };
+
+    try {
+      const raw = sessionStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.ts && Date.now() - parsed.ts < 30000 && parsed.data) {
+          apply(parsed.data);
+          return;
+        }
+      }
+    } catch (e) {}
+
+    fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`, {
+      cache: "no-store",
+      headers: { Accept: "application/vnd.github+json" }
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        try { sessionStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch (e) {}
+        apply(data);
+      })
+      .catch(() => {});
+  });
+}
