@@ -207,6 +207,12 @@ function build(opts = {}) {
     about: "Who I am, what I'm tinkering with, and where to find me around the web.",
   };
 
+  const sectionItems = {
+    writeups: (dataMod.WRITEUPS || []).map((w) => `<li><a href="/writeups/${escAttr(w.slug)}/">${escAttr(w.title)}</a> — ${escAttr(w.excerpt || "")}</li>`).join(""),
+    projects: (dataMod.PROJECTS || []).map((p) => `<li><a href="/projects/${escAttr(p.slug)}/">${escAttr(p.title)}</a> — ${escAttr(p.excerpt || "")}</li>`).join(""),
+    notes: (dataMod.NOTES || []).map((n) => `<li><a href="/notes/${escAttr(n.slug)}/">${escAttr(n.title)}</a> — ${escAttr(n.excerpt || "")}</li>`).join(""),
+  };
+
   for (const r of ["writeups", "projects", "notes", "timeline", "about"]) {
     const label = r[0].toUpperCase() + r.slice(1);
     const desc = sectionCopy[r] || siteDesc;
@@ -219,7 +225,9 @@ function build(opts = {}) {
       tags: [],
       metaRows: siteStats,
     });
-    writeRoutePage(r, `${label} — ${siteBrand}`, desc, og);
+    const listHtml = sectionItems[r] ? `<ul>${sectionItems[r]}</ul>` : "";
+    const seoBody = `<section class="seo-article"><h1>${escAttr(label)}</h1><p>${escAttr(desc)}</p>${listHtml}</section>`;
+    writeRoutePage(r, `${label} — ${siteBrand}`, desc, og, seoBody);
   }
 
   const buildPostOgOpts = (item, typeLabel, routePrefix, useTags = true) => {
