@@ -17,6 +17,6 @@
   "devDependencies": {
     "@napi-rs/canvas": "^1.2.1",
     "esbuild": "0.28.2",
-    "jsdom": "^26.0.0"
+    "jsdom": "^31.0.1"
   }
 }
