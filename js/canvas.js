@@ -170,7 +170,7 @@
         const cloud = {
           shape: makeCloudShape(),
           scale: 0.72 + depth * 0.58,
-          speed: 0.14 + depth * 0.36,
+          speed: 0.32 + depth * 0.78,
           alpha: pal.alpha[0] + depth * (pal.alpha[1] - pal.alpha[0]),
           depth,
           row: r,
