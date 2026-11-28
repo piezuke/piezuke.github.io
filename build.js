@@ -198,12 +198,11 @@ function build(opts = {}) {
   ].filter(Boolean);
 
   const homeOg = makeOg("home", {
-    badge: "PIEBLOG",
-    title: siteTitle,
-    desc: siteDesc,
-    sublines: homeSublines,
-    route: "~/",
-    tags: ["ctf", "projects", "pwn", "notes", "dev"],
+    badge: "piezuke",
+    title: "PieBlog",
+    desc: "Projects, CTF writeups, notes, and whatever else I'm messin around with.",
+    sublines: [],
+    tags: ["ctf", "projects", "pwn", "notes"],
     metaRows: siteStats,
   });
   writeRoutePage("", siteTitle, siteDesc, homeOg);

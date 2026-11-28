@@ -7233,3 +7233,59 @@ body::before {
 #github-repo { scroll-margin-top: 96px; }
 
 #progress { display: none !important; }
+
+/* ---- Mobile Navbar Polish (Right Cluster) ---- */
+@media (max-width: 860px) {
+  header.topnav {
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    padding: 6px 10px 6px 16px !important;
+    border-radius: 999px !important;
+  }
+  header.topnav .navctl {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  header.topnav .mini-player:not(.visible) {
+    display: none !important;
+  }
+  header.topnav #cmdk-btn {
+    width: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid var(--border-strong) !important;
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    box-shadow: none !important;
+  }
+  header.topnav #cmdk-btn > span {
+    display: none !important;
+  }
+  header.topnav #cmdk-btn::before {
+    content: "";
+    width: 16px;
+    height: 16px;
+    background-color: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27black%27 stroke-width=%272.2%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Ccircle cx=%2711%27 cy=%2711%27 r=%277%27/%3E%3Cline x1=%2720%27 y1=%2720%27 x2=%2716.65%27 y2=%2716.65%27/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27black%27 stroke-width=%272.2%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Ccircle cx=%2711%27 cy=%2711%27 r=%277%27/%3E%3Cline x1=%2720%27 y1=%2720%27 x2=%2716.65%27 y2=%2716.65%27/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+  header.topnav .burger {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 50% !important;
+    flex-shrink: 0;
+  }
+}
+@media (max-width: 440px) {
+  header.topnav #cmdk-btn,
+  header.topnav .burger {
+    width: 34px !important;
+    height: 34px !important;
+  }
+}

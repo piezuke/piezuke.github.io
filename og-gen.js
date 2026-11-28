@@ -54,11 +54,10 @@ function drawPixelBrackets(ctx, x, y, w, h, len = 14, thick = 4, color = "#fffff
 function generateOgCard(outPath, opts = {}) {
   if (!createCanvas) return false;
   const {
-    badge = "PIEBLOG",
-    title = "piezuke",
+    badge = "piezuke",
+    title = "PieBlog",
     desc = "",
     date = "",
-    route = "~/",
     tags = [],
     metaRows = [],
     sublines = [],
@@ -67,9 +66,10 @@ function generateOgCard(outPath, opts = {}) {
 
   const W = 1200, H = 630;
   const pad = 16;
-  const topBarH = 44;
-  const footH = 46;
+  const footH = 48;
   const sideX = 804;
+  const bodyTop = pad;
+  const footY = H - pad - footH;
 
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext("2d");
@@ -86,8 +86,6 @@ function generateOgCard(outPath, opts = {}) {
   }
 
   // Right-panel subtle tint
-  const bodyTop = pad + topBarH;
-  const footY = H - pad - footH;
   ctx.fillStyle = "rgba(255,255,255,0.03)";
   ctx.fillRect(sideX, bodyTop, W - pad - sideX, footY - bodyTop);
 
@@ -97,102 +95,88 @@ function generateOgCard(outPath, opts = {}) {
   ctx.strokeRect(pad, pad, W - pad * 2, H - pad * 2);
   drawPixelBrackets(ctx, pad - 2, pad - 2, W - pad * 2 + 4, H - pad * 2 + 4, 16, 4, "#ffffff");
 
-  // 3. Top HUD bar
-  ctx.fillStyle = "#0e0e0e";
-  ctx.fillRect(pad + 1, pad + 1, W - pad * 2 - 2, topBarH - 1);
-  ctx.fillStyle = "#2d2d2d";
-  ctx.fillRect(pad, bodyTop, W - pad * 2, 2);
-
-  // Window dots
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(pad + 16, pad + 17, 10, 10);
-  ctx.fillStyle = "#666666";
-  ctx.fillRect(pad + 34, pad + 17, 10, 10);
-  ctx.fillRect(pad + 52, pad + 17, 10, 10);
-
-  ctx.font = `bold 18px ${MONO}`;
-  ctx.fillStyle = "#e0e0e0";
-  ctx.fillText(`piezuke@blog:${route}`, pad + 78, pad + 28);
-
-  ctx.textAlign = "right";
-  ctx.fillStyle = "#888888";
-  ctx.fillText("LIVE // MONO", W - pad - 18, pad + 28);
-  ctx.textAlign = "left";
-
   // Vertical divider
   ctx.fillStyle = "#2d2d2d";
   ctx.fillRect(sideX, bodyTop, 2, footY - bodyTop);
 
-  // 4. LEFT COLUMN (tight, edge-to-edge)
-  const leftX = pad + 28;
-  const mainW = sideX - leftX - 28;
+  // 3. LEFT COLUMN
+  const leftX = pad + 32;
+  const mainW = sideX - leftX - 32;
 
-  // Badge + Date
-  const badgeTxt = ` ${String(badge).toUpperCase()} `;
+  // Badge + optional Date
+  const badgeTxt = ` ${String(badge)} `;
   ctx.font = `bold 18px ${MONO}`;
   const bw = ctx.measureText(badgeTxt).width + 16;
   ctx.fillStyle = "#ffffff";
-  ctx.fillRect(leftX, bodyTop + 24, bw, 32);
+  ctx.fillRect(leftX, bodyTop + 34, bw, 34);
   ctx.fillStyle = "#050505";
-  ctx.fillText(badgeTxt, leftX + 8, bodyTop + 46);
+  ctx.fillText(badgeTxt, leftX + 8, bodyTop + 57);
 
   if (date) {
     ctx.fillStyle = "#909090";
     ctx.font = `18px ${MONO}`;
-    ctx.fillText(`// ${date}`, leftX + bw + 14, bodyTop + 46);
+    ctx.fillText(`// ${date}`, leftX + bw + 14, bodyTop + 57);
   }
 
-  // Title (large & punchy)
+  // Title
   ctx.fillStyle = "#ffffff";
-  ctx.font = `bold 56px ${MONO}`;
+  ctx.font = `bold 64px ${MONO}`;
   const titleLines = wrapText(ctx, title, mainW, 3);
-  let y = bodyTop + 124;
+  let y = bodyTop + 142;
   for (const l of titleLines) {
     ctx.fillText(l, leftX, y);
-    y += 66;
+    y += 74;
   }
 
-  // Bordered excerpt box filling the middle cleanly
-  const tagsY = footY - 52;
-  const boxTop = y - 12;
-  const boxH = Math.max(104, tagsY - boxTop - 20);
+  // Bordered excerpt box (auto-sized snugly when no sublines, fills cleanly otherwise)
+  const tagsY = footY - 58;
+  const boxTop = y - 6;
+  const maxBoxH = Math.max(108, tagsY - boxTop - 24);
+
+  ctx.font = `24px ${MONO}`;
+  const maxDescLines = sublines.length ? 3 : Math.max(2, Math.floor((maxBoxH - 44) / 36));
+  const descLines = desc ? wrapText(ctx, desc, mainW - 44, maxDescLines) : [];
+  const contentH =
+    36 +
+    descLines.length * 36 +
+    (sublines.length ? 26 + sublines.length * 32 : 0) +
+    22;
+  const boxH = Math.min(maxBoxH, Math.max(116, contentH));
+
   ctx.fillStyle = "rgba(14,14,14,0.88)";
   ctx.fillRect(leftX, boxTop, mainW, boxH);
   ctx.strokeStyle = "#2b2b2b";
   ctx.lineWidth = 2;
   ctx.strokeRect(leftX, boxTop, mainW, boxH);
-  // White left accent bar on the excerpt box
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(leftX, boxTop, 4, boxH);
 
-  let dy = boxTop + 38;
-  if (desc) {
-    ctx.fillStyle = "#d0d0d0";
-    ctx.font = `22px ${MONO}`;
-    const maxDescLines = sublines.length ? 3 : Math.max(2, Math.floor((boxH - 28) / 34));
-    const descLines = wrapText(ctx, desc, mainW - 36, maxDescLines);
+  let dy = boxTop + 46;
+  if (descLines.length) {
+    ctx.fillStyle = "#d4d4d4";
+    ctx.font = `24px ${MONO}`;
     for (const l of descLines) {
-      ctx.fillText(l, leftX + 20, dy);
-      dy += 32;
+      ctx.fillText(l, leftX + 22, dy);
+      dy += 36;
     }
   }
   if (sublines.length) {
     dy += 8;
     ctx.fillStyle = "#242424";
-    ctx.fillRect(leftX + 20, dy - 16, mainW - 40, 1);
+    ctx.fillRect(leftX + 22, dy - 16, mainW - 44, 1);
     ctx.font = `18px ${MONO}`;
     for (const s of sublines) {
       if (dy > boxTop + boxH - 14) break;
       ctx.fillStyle = "#ffffff";
-      ctx.fillText(">", leftX + 20, dy + 8);
+      ctx.fillText(">", leftX + 22, dy + 8);
       ctx.fillStyle = "#9a9a9a";
       const txt = String(s).length > 52 ? String(s).slice(0, 51) + "…" : String(s);
-      ctx.fillText(txt, leftX + 40, dy + 8);
+      ctx.fillText(txt, leftX + 42, dy + 8);
       dy += 30;
     }
   }
 
-  // Tag pills pinned neatly above footer
+  // Tag pills pinned above footer
   const cleanTags = (Array.isArray(tags) ? tags : [])
     .map((t) => String(t || "").trim())
     .filter(Boolean)
@@ -203,25 +187,25 @@ function generateOgCard(outPath, opts = {}) {
     ctx.font = `bold 17px ${MONO}`;
     for (const tag of cleanTags) {
       const label = `#${tag.toLowerCase().replace(/^#/, "")}`;
-      const tw = ctx.measureText(label).width + 20;
+      const tw = ctx.measureText(label).width + 22;
       if (tx + tw > sideX - 24) break;
       ctx.fillStyle = "#121212";
-      ctx.fillRect(tx, tagsY, tw, 32);
+      ctx.fillRect(tx, tagsY, tw, 34);
       ctx.strokeStyle = "#444444";
       ctx.lineWidth = 2;
-      ctx.strokeRect(tx, tagsY, tw, 32);
+      ctx.strokeRect(tx, tagsY, tw, 34);
       ctx.fillStyle = "#e5e5e5";
-      ctx.fillText(label, tx + 10, tagsY + 22);
+      ctx.fillText(label, tx + 11, tagsY + 23);
       tx += tw + 10;
     }
   }
 
-  // 5. RIGHT SIDEBAR (compact & filled)
-  const sPad = sideX + 24;
-  const sW = W - pad - 24 - sPad;
+  // 4. RIGHT SIDEBAR
+  const sPad = sideX + 26;
+  const sW = W - pad - 26 - sPad;
 
   const avSize = 108;
-  const avY = bodyTop + 24;
+  const avY = bodyTop + 34;
   if (avatarPath && fs.existsSync(avatarPath)) {
     try {
       const img = new Image();
@@ -233,27 +217,29 @@ function generateOgCard(outPath, opts = {}) {
     } catch {}
   }
 
+  // Profile name + handle centered vertically next to avatar
   ctx.fillStyle = "#ffffff";
-  ctx.font = `bold 26px ${MONO}`;
-  ctx.fillText("piezuke", sPad + avSize + 16, avY + 36);
+  ctx.font = `bold 30px ${MONO}`;
+  ctx.fillText("PIE", sPad + avSize + 18, avY + 48);
   ctx.fillStyle = "#9a9a9a";
-  ctx.font = `16px ${MONO}`;
-  ctx.fillText("@piezuke", sPad + avSize + 16, avY + 64);
-  ctx.fillStyle = "#707070";
-  ctx.fillText("SEC // CODE", sPad + avSize + 16, avY + 90);
+  ctx.font = `17px ${MONO}`;
+  ctx.fillText("@piezuke", sPad + avSize + 18, avY + 78);
 
   // Divider
   ctx.fillStyle = "#2b2b2b";
-  ctx.fillRect(sPad, avY + avSize + 20, sW, 2);
+  ctx.fillRect(sPad, avY + avSize + 24, sW, 2);
 
-  // Metadata rows
-  let my = avY + avSize + 56;
-  for (const [k, v] of metaRows.slice(0, 5)) {
+  // Metadata rows (strip THEME row if present)
+  const filteredMeta = (Array.isArray(metaRows) ? metaRows : []).filter(
+    ([k]) => !/^theme$/i.test(String(k || "").trim()),
+  );
+  let my = avY + avSize + 66;
+  for (const [k, v] of filteredMeta.slice(0, 5)) {
     ctx.font = `16px ${MONO}`;
     ctx.fillStyle = "#777777";
     ctx.fillText(String(k).toUpperCase(), sPad, my);
 
-    ctx.font = `bold 17px ${MONO}`;
+    ctx.font = `bold 18px ${MONO}`;
     ctx.fillStyle = "#f0f0f0";
     ctx.textAlign = "right";
     const val = String(v || "-");
@@ -261,22 +247,22 @@ function generateOgCard(outPath, opts = {}) {
     ctx.textAlign = "left";
 
     ctx.fillStyle = "#222222";
-    ctx.fillRect(sPad, my + 14, sW, 1);
-    my += 44;
+    ctx.fillRect(sPad, my + 16, sW, 1);
+    my += 52;
   }
 
   // Pixel barcode strip pinned at bottom of sidebar
-  const barY = footY - 52;
+  const barY = footY - 58;
   const pattern = [6, 2, 8, 2, 4, 4, 10, 2, 6, 2, 4, 8, 4, 2, 10, 2, 6, 4, 2, 8, 4, 6, 2, 4];
   let bx = sPad;
   ctx.fillStyle = "#4a4a4a";
   for (let i = 0; i < pattern.length && bx < sPad + sW - 6; i++) {
     const bw2 = pattern[i];
-    if (i % 2 === 0) ctx.fillRect(bx, barY, bw2, 32);
+    if (i % 2 === 0) ctx.fillRect(bx, barY, bw2, 34);
     bx += bw2 + 3;
   }
 
-  // 6. Bottom Footer Bar
+  // 5. Bottom Footer Bar (domain only)
   ctx.fillStyle = "#0e0e0e";
   ctx.fillRect(pad + 1, footY, W - pad * 2 - 2, footH - 1);
   ctx.fillStyle = "#2d2d2d";
@@ -284,18 +270,13 @@ function generateOgCard(outPath, opts = {}) {
 
   // Pixel diamond sprite
   ctx.fillStyle = "#ffffff";
-  ctx.fillRect(pad + 22, footY + 15, 6, 16);
-  ctx.fillRect(pad + 19, footY + 18, 12, 10);
-  ctx.fillRect(pad + 16, footY + 21, 18, 4);
+  ctx.fillRect(pad + 22, footY + 16, 6, 16);
+  ctx.fillRect(pad + 19, footY + 19, 12, 10);
+  ctx.fillRect(pad + 16, footY + 22, 18, 4);
 
   ctx.font = `bold 18px ${MONO}`;
   ctx.fillStyle = "#ececec";
-  ctx.fillText("https://piezuke.github.io", pad + 44, footY + 29);
-
-  ctx.textAlign = "right";
-  ctx.fillStyle = "#808080";
-  ctx.fillText("WRITEUPS // PROJECTS // NOTES", W - pad - 18, footY + 29);
-  ctx.textAlign = "left";
+  ctx.fillText("https://piezuke.github.io", pad + 44, footY + 30);
 
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, canvas.toBuffer("image/png"));
