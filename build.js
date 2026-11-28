@@ -186,101 +186,86 @@ function build(opts = {}) {
     ["WRITEUPS", String(wCount).padStart(2, "0")],
     ["PROJECTS", String(pCount).padStart(2, "0")],
     ["NOTES", String(nCount).padStart(2, "0")],
-    ["THEME", "MONOCHROME"],
   ];
-
-  const latestW = (dataMod.WRITEUPS || [])[0];
-  const latestP = (dataMod.PROJECTS || [])[0];
-  const homeSublines = [
-    latestW ? `writeup: ${latestW.title}` : null,
-    latestP ? `project: ${latestP.title}` : null,
-    "stack: C / Python / JS / Linux",
-  ].filter(Boolean);
 
   const homeOg = makeOg("home", {
     badge: "piezuke",
     title: "PieBlog",
     desc: "Projects, CTF writeups, notes, and whatever else I'm messin around with.",
     sublines: [],
-    tags: ["ctf", "projects", "pwn", "notes"],
+    route: "",
+    tags: [],
     metaRows: siteStats,
   });
   writeRoutePage("", siteTitle, siteDesc, homeOg);
 
   const sectionCopy = {
-    writeups: {
-      desc: "CTF challenge breakdowns, binary exploitation notes, and step-by-step solves.",
-      sublines: (dataMod.WRITEUPS || []).slice(0, 3).map((w) => `[${w.category || "CTF"}] ${w.title}`),
-    },
-    projects: {
-      desc: "Tools, algorithms, and side projects built from scratch.",
-      sublines: (dataMod.PROJECTS || []).slice(0, 3).map((p) => `repo: ${p.title}`),
-    },
-    notes: {
-      desc: "Quick technical references, snippets, and field notes.",
-      sublines: ["topics: pwn / reversing / systems / linux"],
-    },
-    timeline: {
-      desc: "Chronological log of posts, builds, and milestones.",
-      sublines: homeSublines.slice(0, 2),
-    },
-    about: {
-      desc: "Who I am, what I'm tinkering with, and where to find me around the web.",
-      sublines: ["github.com/piezuke", "piezuke.github.io"],
-    },
+    writeups: "CTF challenge breakdowns, binary exploitation notes, and step-by-step solves.",
+    projects: "Tools, algorithms, and side projects built from scratch.",
+    notes: "Quick technical references, snippets, and field notes.",
+    timeline: "Chronological log of posts, builds, and milestones.",
+    about: "Who I am, what I'm tinkering with, and where to find me around the web.",
   };
 
   for (const r of ["writeups", "projects", "notes", "timeline", "about"]) {
     const label = r[0].toUpperCase() + r.slice(1);
-    const sc = sectionCopy[r] || { desc: siteDesc, sublines: [] };
+    const desc = sectionCopy[r] || siteDesc;
     const og = makeOg(r, {
-      badge: label,
-      title: `${label} — ${siteBrand}`,
-      desc: sc.desc,
-      sublines: sc.sublines,
-      route: `~/${r}`,
-      tags: [r, "pieblog", "security"],
+      badge: "piezuke",
+      title: label,
+      desc,
+      sublines: [],
+      route: r,
+      tags: [],
       metaRows: siteStats,
     });
-    writeRoutePage(r, `${label} — ${siteBrand}`, sc.desc, og);
+    writeRoutePage(r, `${label} — ${siteBrand}`, desc, og);
   }
-  const buildPostOgOpts = (item, typeLabel, routePrefix) => {
-    const metaEntries = Object.entries(item.meta || {});
-    const sublines = metaEntries.map(([k, v]) => `${k}: ${v}`);
-    if (item.tag) sublines.push(`tags: ${item.tag}`);
 
-    const pills = Array.isArray(item.pills) && item.pills.length
-      ? item.pills
-      : String(item.tag || "").split("·").map((s) => s.trim()).filter(Boolean);
+  const buildPostOgOpts = (item, typeLabel, routePrefix, useTags = true) => {
+    const metaEntries = Object.entries(item.meta || {}).filter(
+      ([k]) => !/^theme$/i.test(k)
+    );
+    const pills = useTags
+      ? (
+          Array.isArray(item.pills) && item.pills.length
+            ? item.pills
+            : String(item.tag || "").split("·").map((s) => s.trim()).filter(Boolean)
+        ).slice(0, 4)
+      : [];
 
     const metaRows = [
       ["TYPE", typeLabel],
-      ...metaEntries.slice(0, 3).map(([k, v]) => [k.toUpperCase(), String(v)]),
+      ...metaEntries.slice(0, 1).map(([k, v]) => [k.toUpperCase(), String(v)]),
       ["DATE", item.date || "2026"],
-    ].slice(0, 5);
+    ];
 
-    const badge = (item.meta && (item.meta.Category || item.meta.CTF)) || typeLabel;
     return {
-      badge,
+      badge: typeLabel.toLowerCase(),
       title: item.title,
       desc: item.excerpt || "",
-      sublines,
+      sublines: [],
       date: item.date,
-      route: `~/${routePrefix}/${item.slug}`,
-      tags: pills.length ? pills : [typeLabel.toLowerCase()],
+      route: `${routePrefix}/${item.slug}`,
+      tags: useTags ? (pills.length ? pills : [typeLabel.toLowerCase()]) : [],
       metaRows,
     };
   };
 
   for (const w of dataMod.WRITEUPS || []) {
     const seoBody = `<article class="seo-article"><h1>${escAttr(w.title)}</h1><p>${escAttr(w.date || "")}</p><p>${escAttr(w.excerpt || "")}</p></article>`;
-    const og = makeOg(`writeups-${w.slug}`, buildPostOgOpts(w, "WRITEUP", "writeups"));
+    const og = makeOg(`writeups-${w.slug}`, buildPostOgOpts(w, "WRITEUP", "writeups", true));
     writeRoutePage(`writeups/${w.slug}`, `${w.title} — ${siteBrand}`, w.excerpt, og, seoBody, "article");
   }
   for (const p of dataMod.PROJECTS || []) {
     const seoBody = `<article class="seo-article"><h1>${escAttr(p.title)}</h1><p>${escAttr(p.date || "")}</p><p>${escAttr(p.excerpt || "")}</p></article>`;
-    const og = makeOg(`projects-${p.slug}`, buildPostOgOpts(p, "PROJECT", "projects"));
+    const og = makeOg(`projects-${p.slug}`, buildPostOgOpts(p, "PROJECT", "projects", true));
     writeRoutePage(`projects/${p.slug}`, `${p.title} — ${siteBrand}`, p.excerpt, og, seoBody, "article");
+  }
+  for (const n of dataMod.NOTES || []) {
+    const seoBody = `<article class="seo-article"><h1>${escAttr(n.title)}</h1><p>${escAttr(n.date || "")}</p><p>${escAttr(n.excerpt || "")}</p></article>`;
+    const og = makeOg(`notes-${n.slug}`, buildPostOgOpts(n, "NOTE", "notes", false));
+    writeRoutePage(`notes/${n.slug}`, `${n.title} — ${siteBrand}`, n.excerpt, og, seoBody, "article");
   }
 
   /* ---- 3d. generate sitemap.xml & feed.xml ---- */

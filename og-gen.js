@@ -58,15 +58,16 @@ function generateOgCard(outPath, opts = {}) {
     title = "PieBlog",
     desc = "",
     date = "",
+    route = "",
     tags = [],
     metaRows = [],
     sublines = [],
     avatarPath = "",
   } = opts;
 
-  const W = 1200, H = 630;
+  const W = 1200, H = 480;
   const pad = 16;
-  const footH = 48;
+  const footH = 46;
   const sideX = 804;
   const bodyTop = pad;
   const footY = H - pad - footH;
@@ -108,30 +109,31 @@ function generateOgCard(outPath, opts = {}) {
   ctx.font = `bold 18px ${MONO}`;
   const bw = ctx.measureText(badgeTxt).width + 16;
   ctx.fillStyle = "#ffffff";
-  ctx.fillRect(leftX, bodyTop + 34, bw, 34);
+  ctx.fillRect(leftX, bodyTop + 26, bw, 32);
   ctx.fillStyle = "#050505";
-  ctx.fillText(badgeTxt, leftX + 8, bodyTop + 57);
+  ctx.fillText(badgeTxt, leftX + 8, bodyTop + 48);
 
   if (date) {
     ctx.fillStyle = "#909090";
     ctx.font = `18px ${MONO}`;
-    ctx.fillText(`// ${date}`, leftX + bw + 14, bodyTop + 57);
+    ctx.fillText(`// ${date}`, leftX + bw + 14, bodyTop + 48);
   }
 
   // Title
   ctx.fillStyle = "#ffffff";
-  ctx.font = `bold 64px ${MONO}`;
-  const titleLines = wrapText(ctx, title, mainW, 3);
-  let y = bodyTop + 142;
+  ctx.font = `bold 58px ${MONO}`;
+  const titleLines = wrapText(ctx, title, mainW, 2);
+  let y = bodyTop + 124;
   for (const l of titleLines) {
     ctx.fillText(l, leftX, y);
-    y += 74;
+    y += 66;
   }
 
   // Bordered excerpt box (auto-sized snugly when no sublines, fills cleanly otherwise)
-  const tagsY = footY - 58;
-  const boxTop = y - 6;
-  const maxBoxH = Math.max(108, tagsY - boxTop - 24);
+  const tagsY = footY - 52;
+  const boxTop = y - 10;
+  const hasTags = Array.isArray(tags) && tags.some((t) => String(t || "").trim());
+  const maxBoxH = Math.max(108, (hasTags ? tagsY - 24 : footY - 32) - boxTop);
 
   ctx.font = `24px ${MONO}`;
   const maxDescLines = sublines.length ? 3 : Math.max(2, Math.floor((maxBoxH - 44) / 36));
@@ -141,7 +143,7 @@ function generateOgCard(outPath, opts = {}) {
     descLines.length * 36 +
     (sublines.length ? 26 + sublines.length * 32 : 0) +
     22;
-  const boxH = Math.min(maxBoxH, Math.max(116, contentH));
+  const boxH = Math.min(maxBoxH, Math.max(96, contentH));
 
   ctx.fillStyle = "rgba(14,14,14,0.88)";
   ctx.fillRect(leftX, boxTop, mainW, boxH);
@@ -204,8 +206,8 @@ function generateOgCard(outPath, opts = {}) {
   const sPad = sideX + 26;
   const sW = W - pad - 26 - sPad;
 
-  const avSize = 108;
-  const avY = bodyTop + 34;
+  const avSize = 96;
+  const avY = bodyTop + 26;
   if (avatarPath && fs.existsSync(avatarPath)) {
     try {
       const img = new Image();
@@ -220,20 +222,20 @@ function generateOgCard(outPath, opts = {}) {
   // Profile name + handle centered vertically next to avatar
   ctx.fillStyle = "#ffffff";
   ctx.font = `bold 30px ${MONO}`;
-  ctx.fillText("PIE", sPad + avSize + 18, avY + 48);
+  ctx.fillText("PIE", sPad + avSize + 16, avY + 42);
   ctx.fillStyle = "#9a9a9a";
   ctx.font = `17px ${MONO}`;
-  ctx.fillText("@piezuke", sPad + avSize + 18, avY + 78);
+  ctx.fillText("@piezuke", sPad + avSize + 16, avY + 70);
 
   // Divider
   ctx.fillStyle = "#2b2b2b";
-  ctx.fillRect(sPad, avY + avSize + 24, sW, 2);
+  ctx.fillRect(sPad, avY + avSize + 18, sW, 2);
 
   // Metadata rows (strip THEME row if present)
   const filteredMeta = (Array.isArray(metaRows) ? metaRows : []).filter(
     ([k]) => !/^theme$/i.test(String(k || "").trim()),
   );
-  let my = avY + avSize + 66;
+  let my = avY + avSize + 54;
   for (const [k, v] of filteredMeta.slice(0, 5)) {
     ctx.font = `16px ${MONO}`;
     ctx.fillStyle = "#777777";
@@ -248,17 +250,17 @@ function generateOgCard(outPath, opts = {}) {
 
     ctx.fillStyle = "#222222";
     ctx.fillRect(sPad, my + 16, sW, 1);
-    my += 52;
+    my += 46;
   }
 
   // Pixel barcode strip pinned at bottom of sidebar
-  const barY = footY - 58;
+  const barY = footY - 50;
   const pattern = [6, 2, 8, 2, 4, 4, 10, 2, 6, 2, 4, 8, 4, 2, 10, 2, 6, 4, 2, 8, 4, 6, 2, 4];
   let bx = sPad;
   ctx.fillStyle = "#4a4a4a";
   for (let i = 0; i < pattern.length && bx < sPad + sW - 6; i++) {
     const bw2 = pattern[i];
-    if (i % 2 === 0) ctx.fillRect(bx, barY, bw2, 34);
+    if (i % 2 === 0) ctx.fillRect(bx, barY, bw2, 30);
     bx += bw2 + 3;
   }
 
@@ -276,7 +278,10 @@ function generateOgCard(outPath, opts = {}) {
 
   ctx.font = `bold 18px ${MONO}`;
   ctx.fillStyle = "#ececec";
-  ctx.fillText("https://piezuke.github.io", pad + 44, footY + 30);
+  const cleanRoute = String(route || "").replace(/^\/+|\/+$/g, "");
+  const footerUrl = cleanRoute ? `https://piezuke.github.io/${cleanRoute}` : "https://piezuke.github.io";
+  const displayUrl = footerUrl.length > 68 ? footerUrl.slice(0, 67) + "…" : footerUrl;
+  ctx.fillText(displayUrl, pad + 44, footY + 30);
 
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, canvas.toBuffer("image/png"));

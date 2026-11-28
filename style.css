@@ -2684,17 +2684,6 @@ kbd {
     }
 }
 
-@keyframes rippleAnim {
-    0% {
-        transform: translate(-50%, -50%) scale(0.2);
-        opacity: 0.7;
-    }
-    100% {
-        transform: translate(-50%, -50%) scale(2.6);
-        opacity: 0;
-    }
-}
-
 @keyframes noteFadeIn {
     from {
         opacity: 0;
