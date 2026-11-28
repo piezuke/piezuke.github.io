@@ -240,15 +240,21 @@
       document.body.appendChild(curtain);
     }
     const panels = curtain.children;
+    clearTimeout(curtain._hideTimer);
     G.killTweensOf(panels);
-    G.set(curtain, { display: "block" });
+    G.set(curtain, { display: "block", pointerEvents: "none" });
     G.set(panels, { yPercent: 0 });
+    const hideCurtain = () => {
+      clearTimeout(curtain._hideTimer);
+      curtain.style.display = "none";
+    };
+    curtain._hideTimer = setTimeout(hideCurtain, 1000);
     G.to(panels, {
       yPercent: -101,
       duration: 0.75,
       ease: "expo.inOut",
       stagger: 0.07,
-      onComplete: () => G.set(curtain, { display: "none" }),
+      onComplete: hideCurtain,
     });
   }
 

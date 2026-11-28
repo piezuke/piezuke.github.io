@@ -291,27 +291,30 @@
   /* ---------- click ripple ---------- */
   const ripplePool = [];
   let rippleIdx = 0;
-  const RIPPLE_FRAMES = [
-    { transform: "translate(-50%, -50%) scale(0.2)", opacity: 0.7 },
-    { transform: "translate(-50%, -50%) scale(2.6)", opacity: 0 },
-  ];
-  function fireRipple(x, y) {
-    let el = ripplePool[rippleIdx];
-    if (!el) {
-      el = document.createElement("div");
+  if (typeof document !== "undefined" && document.body) {
+    for (let i = 0; i < 4; i++) {
+      const el = document.createElement("div");
       el.className = "ripple";
       el.setAttribute("aria-hidden", "true");
       document.body.appendChild(el);
-      ripplePool[rippleIdx] = el;
+      ripplePool.push(el);
     }
-    rippleIdx = (rippleIdx + 1) % 4;
-    el.style.left = x + "px";
-    el.style.top = y + "px";
+  }
+  function fireRipple(x, y) {
+    const el = ripplePool[rippleIdx];
+    if (!el) return;
+    rippleIdx = (rippleIdx + 1) % ripplePool.length;
     if (el._anim) el._anim.cancel();
-    el._anim = el.animate(RIPPLE_FRAMES, {
-      duration: 600,
-      easing: "cubic-bezier(0.16, 0.84, 0.44, 1)",
-    });
+    el._anim = el.animate(
+      [
+        { transform: "translate3d(" + x + "px," + y + "px,0) scale(0.45)", opacity: 0.7 },
+        { transform: "translate3d(" + x + "px," + y + "px,0) scale(2.2)", opacity: 0 },
+      ],
+      {
+        duration: 520,
+        easing: "cubic-bezier(0.16, 0.84, 0.44, 1)",
+      },
+    );
   }
   document.addEventListener(
     "mousedown",
